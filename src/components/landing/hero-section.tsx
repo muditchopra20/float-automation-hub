@@ -4,6 +4,7 @@ import { ButtonWithGlow } from "@/components/ui/button-with-glow";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { WorkflowCard } from "@/components/builder/workflow-card";
 
 export const HeroSection: React.FC = () => {
   return (
@@ -40,17 +41,17 @@ export const HeroSection: React.FC = () => {
                 </p>
               </div>
               <div className="space-y-3">
-                <WorkflowCard
+                <HeroWorkflowCard
                   number={1}
                   app="Gmail"
                   action="Monitor responses from feedback@company.com"
                 />
-                <WorkflowCard
+                <HeroWorkflowCard
                   number={2}
                   app="Flo AI"
                   action="Extract feature requests and summarize"
                 />
-                <WorkflowCard
+                <HeroWorkflowCard
                   number={3}
                   app="Notion"
                   action="Add to 'Feature Requests' database"
@@ -65,7 +66,8 @@ export const HeroSection: React.FC = () => {
   );
 };
 
-const WorkflowCard: React.FC<{
+// Create a separate component to prevent naming conflicts with the imported WorkflowCard
+const HeroWorkflowCard: React.FC<{
   number: number;
   app: string;
   action: string;
