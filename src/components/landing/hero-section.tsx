@@ -20,14 +20,16 @@ export const HeroSection: React.FC = () => {
               Build workflows and AI agents using natural language. Flo builds it all.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <ButtonWithGlow size="lg" asChild>
-                <Link to="/builder">
+              <ButtonWithGlow size="lg">
+                <Link to="/builder" className="flex items-center">
                   Start Building
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </ButtonWithGlow>
-              <Button size="lg" variant="outline" asChild>
-                <Link to="#">Watch Demo</Link>
+              <Button size="lg" variant="outline">
+                <Link to="#" className="flex items-center">
+                  Watch Demo
+                </Link>
               </Button>
             </div>
           </div>

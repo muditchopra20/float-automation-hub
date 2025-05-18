@@ -19,9 +19,8 @@ export const FinalCta: React.FC = () => {
           <ButtonWithGlow
             size="lg"
             className="bg-white text-urban-blue hover:bg-white/90"
-            asChild
           >
-            <Link to="/signup">
+            <Link to="/signup" className="flex items-center">
               Get Started with Flo
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
