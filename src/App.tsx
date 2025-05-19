@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Builder from "./pages/Builder";
 import Workflows from "./pages/Workflows";
 import Agents from "./pages/Agents";
+import Integrations from "./pages/Integrations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/builder" element={<Builder />} />
           <Route path="/workflows" element={<Workflows />} />
           <Route path="/agents" element={<Agents />} />
+          <Route path="/integrations" element={<Integrations />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
