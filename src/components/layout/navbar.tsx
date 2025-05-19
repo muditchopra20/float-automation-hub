@@ -12,7 +12,12 @@ export const Navbar: React.FC = () => {
     <div className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
       <div className="container flex items-center justify-between py-4">
         <Link to="/" className="flex items-center gap-2">
-          <div className="text-2xl font-bold gradient-text">Flo AI</div>
+          <img 
+            src="/lovable-uploads/2debb2ef-0a5e-4454-803f-38421721a019.png" 
+            alt="Flo AI Logo" 
+            className="h-8" 
+          />
+          <div className="text-2xl font-bold">Flo AI</div>
         </Link>
 
         {/* Desktop navigation */}
