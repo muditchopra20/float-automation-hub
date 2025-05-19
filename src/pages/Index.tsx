@@ -40,19 +40,19 @@ const Index = () => {
       <Navbar />
       <main className="flex-1">
         <HeroSection />
-        <div className="reveal-section opacity-0 transition-opacity duration-700">
+        <div className="reveal-section">
           <HowItWorksSection />
         </div>
-        <div className="reveal-section opacity-0 transition-opacity duration-700">
+        <div className="reveal-section">
           <WhyFloSection />
         </div>
-        <div className="reveal-section opacity-0 transition-opacity duration-700">
+        <div className="reveal-section">
           <WorkflowGallery />
         </div>
-        <div className="reveal-section opacity-0 transition-opacity duration-700">
+        <div className="reveal-section">
           <ChatboxPreview />
         </div>
-        <div className="reveal-section opacity-0 transition-opacity duration-700">
+        <div className="reveal-section">
           <FinalCta />
         </div>
       </main>

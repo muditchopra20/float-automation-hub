@@ -54,6 +54,20 @@
   transform: translateY(0);
 }
 
+/* Make sections initially visible for users experiencing issues */
+.reveal-section {
+  opacity: 0.2; /* Starting with slight visibility */
+  animation: fade-in-sections 1.5s forwards;
+  animation-delay: 0.3s;
+}
+
+@keyframes fade-in-sections {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .gradient-text {
   background: linear-gradient(to right, #5B6CFF, #7E53FF);
   -webkit-background-clip: text;
@@ -61,4 +75,3 @@
   background-clip: text;
   text-fill-color: transparent;
 }
-
