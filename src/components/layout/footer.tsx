@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 
 export const Footer = () => {
@@ -8,12 +7,7 @@ export const Footer = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <img 
-                src="/lovable-uploads/2debb2ef-0a5e-4454-803f-38421721a019.png" 
-                alt="Flo AI Logo" 
-                className="h-6" 
-              />
-              <div className="text-2xl font-bold">Flo AI</div>
+              <div className="text-2xl font-bold gradient-text">Flo AI</div>
             </Link>
             <p className="text-neutral-gray text-sm mt-4 max-w-xs">
               Build workflows and AI agents using natural language. Flo builds it all.
