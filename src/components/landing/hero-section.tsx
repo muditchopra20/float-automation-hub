@@ -4,17 +4,21 @@ import { ButtonWithGlow } from "@/components/ui/button-with-glow";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { WorkflowCard } from "@/components/builder/workflow-card";
 
 export const HeroSection: React.FC = () => {
   return (
-    <div className="pt-24 pb-16 md:pb-24">
+    <div className="relative pt-24 pb-16 md:pb-24 overflow-hidden">
+      {/* Background elements */}
+      <div className="absolute inset-0 grid-pattern -z-10"></div>
+      <div className="absolute top-40 left-0 w-40 h-40 bg-urban-blue/5 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-20 right-0 w-60 h-60 bg-violet/5 rounded-full blur-3xl"></div>
+      
       <div className="container relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fade-in">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
               Automation.{" "}
-              <span className="gradient-text">Just by talking.</span>
+              <span className="bg-gradient-to-r from-urban-blue to-violet text-transparent bg-clip-text">Just by talking.</span>
             </h1>
             <p className="text-lg md:text-xl text-neutral-gray max-w-md">
               Build workflows and AI agents using natural language. Flo builds it all.
@@ -33,7 +37,7 @@ export const HeroSection: React.FC = () => {
               </Button>
             </div>
           </div>
-          <div className="relative">
+          <div className="relative animate-fade-in" style={{ animationDelay: "0.3s" }}>
             <div className="absolute inset-0 bg-gradient-to-br from-urban-blue/10 to-violet/10 rounded-2xl -z-10"></div>
             <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg p-6 animate-float">
               <div className="bg-gray-50 rounded-xl p-4 mb-4">
@@ -63,7 +67,6 @@ export const HeroSection: React.FC = () => {
           </div>
         </div>
       </div>
-      <div className="absolute inset-0 grid-pattern -z-10"></div>
     </div>
   );
 };
@@ -75,7 +78,7 @@ const HeroWorkflowCard: React.FC<{
   action: string;
 }> = ({ number, app, action }) => {
   return (
-    <div className="bg-gray-50 rounded-lg p-3 flex gap-3 border border-gray-100">
+    <div className="bg-gray-50 rounded-lg p-3 flex gap-3 border border-gray-100 hover:border-urban-blue/30 transition-colors">
       <div className="w-6 h-6 bg-urban-blue rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
         {number}
       </div>
