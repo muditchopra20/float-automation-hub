@@ -46,13 +46,13 @@
   }
 
   .dark {
-    --background: 222 47% 11%;
+    --background: 222 47% 9%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 10%;
+    --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 11%;
+    --popover: 222 47% 10%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 232 88.7% 67.8%; /* Urban Blue #5B6CFF */
@@ -111,7 +111,7 @@
   }
   
   .floating-card {
-    @apply bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100 dark:border-gray-700;
+    @apply bg-white dark:bg-gray-800/90 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100 dark:border-gray-700;
   }
   
   .gradient-text {
@@ -154,3 +154,30 @@
   @apply bg-gray-800 border-gray-700;
 }
 
+/* Additional dark mode enhancements */
+.dark button {
+  @apply shadow-sm shadow-black/10;
+}
+
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  @apply bg-background/20;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-muted rounded-full;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* Smooth transitions between themes */
+html.transitioning * {
+  transition-duration: 200ms;
+  transition-property: background-color, border-color, color, fill, stroke;
+}

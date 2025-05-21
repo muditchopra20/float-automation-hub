@@ -45,13 +45,13 @@ const workflows = [
 
 const Workflows = () => {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <main className="flex-1 container py-12 px-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Workflows</h1>
-            <p className="text-neutral-gray mt-1">Manage your automated workflows</p>
+            <h1 className="text-3xl font-bold text-foreground">Workflows</h1>
+            <p className="text-muted-foreground mt-1">Manage your automated workflows</p>
           </div>
           <Button className="bg-urban-blue hover:bg-urban-blue/90" asChild>
             <Link to="/builder">
@@ -83,32 +83,32 @@ interface WorkflowItemProps {
 
 const WorkflowItem: React.FC<WorkflowItemProps> = ({ workflow }) => {
   return (
-    <div className="bg-white rounded-lg border border-gray-100 p-4 md:p-6">
+    <div className="bg-card rounded-lg border border-border p-4 md:p-6 shadow-sm dark:shadow-md transition-all hover:shadow-md dark:hover:shadow-lg">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium">{workflow.name}</h3>
+            <h3 className="font-medium text-foreground">{workflow.name}</h3>
             <span
               className={`text-xs px-2 py-0.5 rounded-full ${
                 workflow.status === "Active"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-gray-100 text-neutral-gray"
+                  ? "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               {workflow.status}
             </span>
           </div>
-          <p className="text-sm text-neutral-gray mb-2">{workflow.description}</p>
-          <div className="text-xs text-neutral-gray">Last run: {workflow.lastRun}</div>
+          <p className="text-sm text-muted-foreground mb-2">{workflow.description}</p>
+          <div className="text-xs text-muted-foreground">Last run: {workflow.lastRun}</div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
             <Link to={`/builder?workflow=${workflow.id}`}>Open</Link>
           </Button>
-          <Button variant="ghost" size="sm" className="text-neutral-gray">
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
             <Copy className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="text-neutral-gray">
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
