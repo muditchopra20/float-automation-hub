@@ -42,10 +42,10 @@ const Builder = () => {
         <div className="hidden md:block">
           <BuilderSidebar />
         </div>
-        <div className="flex-1 bg-gray-50 flex flex-col">
+        <div className="flex-1 bg-gray-50 flex flex-col dark:bg-gray-900/90 transition-colors">
           <div className="flex-1 p-4 md:p-8 overflow-y-auto">
             <div className="max-w-2xl mx-auto">
-              <h1 className="text-2xl font-bold mb-6">Current Workflow</h1>
+              <h1 className="text-2xl font-bold mb-6 dark:text-white">Current Workflow</h1>
               {workflow.map((step) => (
                 <WorkflowCard
                   key={step.step}

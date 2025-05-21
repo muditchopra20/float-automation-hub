@@ -45,12 +45,12 @@ export const ChatboxPreview: React.FC = () => {
       <div className="container">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 dark:text-white">Experience the Flo Builder</h2>
-          <p className="text-neutral-gray text-lg max-w-xl mx-auto dark:text-gray-400">
+          <p className="text-neutral-gray text-lg max-w-xl mx-auto dark:text-gray-300">
             Try the chat interface that powers our automation platform
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto rounded-xl overflow-hidden border border-gray-200 shadow-lg bg-white dark:bg-gray-800 dark:border-gray-700 dark:shadow-xl dark:shadow-black/20">
+        <div className="max-w-4xl mx-auto rounded-xl overflow-hidden border border-gray-200 shadow-lg bg-white dark:bg-gray-800/90 dark:border-gray-700 dark:shadow-xl dark:shadow-black/20">
           <div className="h-14 bg-gray-50 border-b border-gray-200 px-6 flex items-center dark:bg-gray-800 dark:border-gray-700">
             <div className="font-medium dark:text-white">Customer Support Automation</div>
           </div>
@@ -68,7 +68,7 @@ export const ChatboxPreview: React.FC = () => {
               ))}
               
               {messages.length > 0 && (
-                <div className="bg-gray-50 p-3 rounded-lg animate-fade-in dark:bg-gray-700">
+                <div className="bg-gray-50 p-3 rounded-lg animate-fade-in dark:bg-gray-700/80 dark:text-gray-200">
                   <p className="text-sm text-gray-700 dark:text-gray-300">{messages[messages.length - 1]}</p>
                 </div>
               )}
