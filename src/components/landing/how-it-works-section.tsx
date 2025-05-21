@@ -4,11 +4,11 @@ import { MessageSquare, Zap, Play } from "lucide-react";
 
 export const HowItWorksSection: React.FC = () => {
   return (
-    <div className="py-20">
+    <div className="py-20 dark:bg-gray-900/80 transition-colors">
       <div className="container">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
-          <p className="text-neutral-gray text-lg max-w-xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 dark:text-white">How It Works</h2>
+          <p className="text-neutral-gray text-lg max-w-xl mx-auto dark:text-gray-400">
             Building workflows with Flo AI is as simple as having a conversation.
             Just describe what you need, and we'll handle the rest.
           </p>
@@ -48,15 +48,15 @@ interface StepCardProps {
 
 const StepCard: React.FC<StepCardProps> = ({ step, title, description, icon }) => {
   return (
-    <div className="floating-card p-6 animate-pulse-glow">
+    <div className="floating-card p-6 animate-pulse-glow dark:hover:shadow-urban-blue/10 dark:card-highlight">
       <div className="flex items-center gap-4 mb-4">
-        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium">
+        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-medium dark:text-white">
           {step}
         </div>
-        <div className="bg-gray-100 p-2 rounded-md">{icon}</div>
+        <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{icon}</div>
       </div>
-      <h3 className="text-xl font-medium mb-2">{title}</h3>
-      <p className="text-neutral-gray">{description}</p>
+      <h3 className="text-xl font-medium mb-2 dark:text-white">{title}</h3>
+      <p className="text-neutral-gray dark:text-gray-400">{description}</p>
     </div>
   );
 };

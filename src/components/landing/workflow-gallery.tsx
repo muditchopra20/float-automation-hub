@@ -58,14 +58,14 @@ export const WorkflowGallery: React.FC = () => {
   };
 
   return (
-    <div className="py-20">
+    <div className="py-20 dark:bg-gray-900/70 transition-colors">
       <div className="container">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-2">
+            <h2 className="text-3xl md:text-4xl font-bold mb-2 dark:text-white">
               Workflow Gallery
             </h2>
-            <p className="text-neutral-gray">
+            <p className="text-neutral-gray dark:text-gray-400">
               Browse pre-built workflows to get started quickly
             </p>
           </div>
@@ -74,7 +74,7 @@ export const WorkflowGallery: React.FC = () => {
               variant="outline"
               size="icon"
               onClick={scrollLeft}
-              className="rounded-full"
+              className="rounded-full dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -82,7 +82,7 @@ export const WorkflowGallery: React.FC = () => {
               variant="outline"
               size="icon"
               onClick={scrollRight}
-              className="rounded-full"
+              className="rounded-full dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300"
             >
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -112,14 +112,14 @@ interface WorkflowCardProps {
 
 const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   return (
-    <div className="floating-card p-6 min-w-[280px] max-w-[320px] flex-shrink-0 snap-start hover:-translate-y-1 transition-transform">
-      <h3 className="text-lg font-medium mb-2">{workflow.title}</h3>
-      <p className="text-neutral-gray text-sm mb-4">{workflow.description}</p>
+    <div className="floating-card p-6 min-w-[280px] max-w-[320px] flex-shrink-0 snap-start hover:-translate-y-1 transition-transform dark:hover:shadow-lg dark:hover:shadow-black/30 dark:card-highlight">
+      <h3 className="text-lg font-medium mb-2 dark:text-white">{workflow.title}</h3>
+      <p className="text-neutral-gray text-sm mb-4 dark:text-gray-400">{workflow.description}</p>
       <div className="flex flex-wrap gap-2">
         {workflow.apps.map((app, index) => (
           <span
             key={index}
-            className="px-2 py-1 bg-gray-100 rounded-md text-xs text-neutral-gray"
+            className="px-2 py-1 bg-gray-100 rounded-md text-xs text-neutral-gray dark:bg-gray-800 dark:text-gray-400"
           >
             {app}
           </span>

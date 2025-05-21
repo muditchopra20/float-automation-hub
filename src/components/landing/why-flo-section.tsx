@@ -4,15 +4,15 @@ import { Bot, MessageSquare, Database, Search } from "lucide-react";
 
 export const WhyFloSection: React.FC = () => {
   return (
-    <div className="py-20 bg-gradient-to-b from-white to-gray-50 relative overflow-hidden">
+    <div className="py-20 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-900/95 relative overflow-hidden transition-colors">
       {/* Background elements */}
-      <div className="absolute top-0 left-1/4 w-64 h-64 bg-mint/20 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-violet/10 rounded-full blur-3xl"></div>
+      <div className="absolute top-0 left-1/4 w-64 h-64 bg-mint/20 dark:bg-urban-blue/10 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-violet/10 dark:bg-violet/10 rounded-full blur-3xl"></div>
       
       <div className="container relative z-10">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Flo</h2>
-          <p className="text-neutral-gray text-lg max-w-xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 dark:text-white">Why Flo</h2>
+          <p className="text-neutral-gray text-lg max-w-xl mx-auto dark:text-gray-400">
             Flo AI is designed to make automation accessible to everyone, from
             technical experts to complete beginners.
           </p>
@@ -64,11 +64,11 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
 }) => {
   return (
     <div 
-      className="floating-card p-6 hover:shadow-lg transition-all hover:-translate-y-1 animate-fade-in" 
+      className="floating-card p-6 hover:shadow-lg transition-all hover:-translate-y-1 animate-fade-in dark:hover:shadow-xl dark:hover:shadow-black/20 dark:card-highlight" 
       style={{ animationDelay: `${delay}s` }}
     >
-      <div className="bg-gray-50 p-3 rounded-lg w-fit mb-4">{icon}</div>
-      <h3 className="text-lg font-medium mb-2">{title}</h3>
+      <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg w-fit mb-4">{icon}</div>
+      <h3 className="text-lg font-medium mb-2 dark:text-white">{title}</h3>
       <p className="text-neutral-gray text-sm">{description}</p>
     </div>
   );

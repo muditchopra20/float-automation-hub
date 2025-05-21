@@ -106,8 +106,8 @@
   
   .dark .grid-pattern {
     background-image:
-      linear-gradient(to right, rgba(91, 108, 255, 0.1) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(91, 108, 255, 0.1) 1px, transparent 1px);
+      linear-gradient(to right, rgba(91, 108, 255, 0.12) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(91, 108, 255, 0.12) 1px, transparent 1px);
   }
   
   .floating-card {
@@ -154,11 +154,21 @@
   @apply bg-gray-800 border-gray-700;
 }
 
-/* Additional dark mode enhancements */
+/* Enhanced glow effects for dark mode */
+.dark .gradient-text {
+  text-shadow: 0 0 20px rgba(91, 108, 255, 0.4);
+}
+
+.dark .button-glow:hover {
+  box-shadow: 0 0 15px rgba(91, 108, 255, 0.4);
+}
+
+/* Improved dark mode styling for buttons */
 .dark button {
   @apply shadow-sm shadow-black/10;
 }
 
+/* Enhanced scrollbar styling for dark mode */
 .dark ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -166,18 +176,112 @@
 
 .dark ::-webkit-scrollbar-track {
   @apply bg-background/20;
+  border-radius: 4px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
   @apply bg-muted rounded-full;
+  border: 2px solid rgba(0, 0, 0, 0.2);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/50;
 }
 
-/* Smooth transitions between themes */
+/* Smooth transitions between themes with enhanced timing */
 html.transitioning * {
   transition-duration: 200ms;
-  transition-property: background-color, border-color, color, fill, stroke;
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+}
+
+/* Improved dark mode animations */
+@keyframes fade-in-sections {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 10px rgba(91, 108, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(91, 108, 255, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(91, 108, 255, 0.1);
+  }
+}
+
+.dark .animate-pulse-glow {
+  animation: pulse-glow 3s infinite;
+}
+
+.dark .card-highlight {
+  @apply border-urban-blue/40 bg-gray-800/80;
+  box-shadow: 0 0 15px rgba(91, 108, 255, 0.15);
+}
+
+/* Dark mode specific backgrounds */
+.dark .bg-gray-50 {
+  @apply bg-gray-900/70;
+}
+
+.dark .bg-white\/70 {
+  @apply bg-gray-800/70 backdrop-blur-md;
+}
+
+.dark .bg-gray-50\/20 {
+  @apply bg-gray-800/20;
+}
+
+.dark .bg-gradient-to-b {
+  @apply from-gray-900 to-gray-800;
+}
+
+/* Dark mode specific text colors */
+.dark .text-neutral-gray {
+  @apply text-gray-400;
+}
+
+.dark .text-gray-700 {
+  @apply text-gray-300;
+}
+
+.dark .text-gray-600 {
+  @apply text-gray-400;
+}
+
+/* Custom float animation for cards in dark mode */
+.dark .animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+    box-shadow: 0 5px 15px 0px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 20px 0px rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    transform: translateY(0px);
+    box-shadow: 0 5px 15px 0px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Custom fade-in animation */
+.animate-fade-in {
+  opacity: 0;
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
