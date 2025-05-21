@@ -1,14 +1,16 @@
+
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ButtonWithGlow } from "@/components/ui/button-with-glow";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-background/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
       <div className="container flex items-center justify-between py-4">
         <Link to="/" className="flex items-center gap-2">
           <div className="text-2xl font-bold gradient-text">Flo AI</div>
@@ -18,6 +20,7 @@ export const Navbar: React.FC = () => {
         <div className="hidden md:flex items-center gap-6">
           <NavLinks />
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Button variant="ghost" asChild>
               <Link to="/login">Log In</Link>
             </Button>
@@ -28,19 +31,21 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Mobile menu button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </Button>
+        <div className="md:hidden flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile navigation */}
       {isMenuOpen && (
-        <div className="md:hidden p-4 pb-6 bg-white border-b border-gray-100 animate-fade-in">
+        <div className="md:hidden p-4 pb-6 bg-white dark:bg-background border-b border-gray-100 dark:border-gray-800 animate-fade-in">
           <div className="flex flex-col space-y-4">
             <MobileNavLinks closeMenu={() => setIsMenuOpen(false)} />
             <div className="flex flex-col gap-2 pt-4">

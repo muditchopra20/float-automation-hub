@@ -2,14 +2,14 @@ import { Link } from "react-router-dom";
 
 export const Footer = () => {
   return (
-    <footer className="border-t border-gray-100 py-12 mt-24">
+    <footer className="border-t border-gray-100 dark:border-gray-800 py-12 mt-24 bg-white dark:bg-background text-foreground">
       <div className="container">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
               <div className="text-2xl font-bold gradient-text">Flo AI</div>
             </Link>
-            <p className="text-neutral-gray text-sm mt-4 max-w-xs">
+            <p className="text-neutral-gray dark:text-gray-400 text-sm mt-4 max-w-xs">
               Build workflows and AI agents using natural language. Flo builds it all.
             </p>
           </div>
@@ -41,8 +41,8 @@ export const Footer = () => {
             </ul>
           </div>
         </div>
-        <div className="mt-12 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm text-neutral-gray">
+        <div className="mt-12 pt-6 border-t border-gray-100 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center">
+          <p className="text-sm text-neutral-gray dark:text-gray-400">
             © {new Date().getFullYear()} Flo AI. All rights reserved.
           </p>
           <div className="flex gap-4 mt-4 md:mt-0">
@@ -66,7 +66,7 @@ const FooterLink = ({
   <li>
     <Link
       to={to}
-      className="text-sm text-neutral-gray hover:text-urban-blue transition-colors"
+      className="text-sm text-neutral-gray dark:text-gray-400 hover:text-urban-blue dark:hover:text-urban-blue transition-colors"
     >
       {children}
     </Link>
@@ -84,7 +84,7 @@ const SocialLink = ({
     href={href}
     target="_blank"
     rel="noopener noreferrer"
-    className="text-sm text-neutral-gray hover:text-urban-blue transition-colors"
+    className="text-sm text-neutral-gray dark:text-gray-400 hover:text-urban-blue dark:hover:text-urban-blue transition-colors"
   >
     {children}
   </a>
