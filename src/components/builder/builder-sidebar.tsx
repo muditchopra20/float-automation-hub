@@ -1,42 +1,97 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bot, Database, Search, Plus, Settings, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAgents } from "@/hooks/use-agents";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 export const BuilderSidebar: React.FC = () => {
   const [activeTab, setActiveTab] = useState("agents");
   const { toast } = useToast();
+  const { agents, createAgent } = useAgents();
+  const { user } = useAuth();
 
-  const handleAgentClick = (agentName: string) => {
-    toast({
-      title: "Agent Selected",
-      description: `${agentName} has been added to your workflow canvas.`,
-    });
-  };
-
-  const handleIntegrationToggle = (integrationName: string, isConnected: boolean) => {
-    if (isConnected) {
+  const handleAgentClick = async (agentName: string, agentType: any) => {
+    try {
+      await createAgent(agentName, agentType, `Configured ${agentName} for workflow automation`);
       toast({
-        title: "Integration Disconnected",
-        description: `${integrationName} has been disconnected.`,
-        variant: "destructive",
+        title: "Agent Added",
+        description: `${agentName} has been added to your workflow canvas.`,
       });
-    } else {
+    } catch (error) {
       toast({
-        title: "Integration Connected",
-        description: `${integrationName} has been successfully connected.`,
+        title: "Error",
+        description: "Failed to add agent to workflow",
+        variant: "destructive",
       });
     }
   };
 
-  const handlePromptClick = (promptTitle: string, prompt: string) => {
-    toast({
-      title: "Prompt Used",
-      description: `"${promptTitle}" has been applied to the chat.`,
-    });
-    // Here you could also send the prompt to the chat input
+  const handleIntegrationToggle = async (integrationName: string, isConnected: boolean) => {
+    if (!user) return;
+
+    try {
+      if (isConnected) {
+        // Disconnect integration
+        await supabase
+          .from('integrations')
+          .update({ status: 'disconnected' })
+          .eq('name', integrationName)
+          .eq('user_id', user.id);
+        
+        toast({
+          title: "Integration Disconnected",
+          description: `${integrationName} has been disconnected.`,
+          variant: "destructive",
+        });
+      } else {
+        // Connect integration
+        await supabase
+          .from('integrations')
+          .upsert({
+            user_id: user.id,
+            name: integrationName,
+            type: integrationName.toLowerCase(),
+            status: 'connected'
+          });
+        
+        toast({
+          title: "Integration Connected",
+          description: `${integrationName} has been successfully connected.`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update integration status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePromptClick = async (promptTitle: string, prompt: string) => {
+    if (!user) return;
+
+    try {
+      // Update usage count for the prompt
+      await supabase
+        .from('prompt_templates')
+        .update({ usage_count: supabase.sql`usage_count + 1` })
+        .eq('title', promptTitle);
+
+      toast({
+        title: "Prompt Used",
+        description: `"${promptTitle}" has been applied to the chat.`,
+      });
+    } catch (error) {
+      console.error('Error updating prompt usage:', error);
+      toast({
+        title: "Prompt Used",
+        description: `"${promptTitle}" has been applied to the chat.`,
+      });
+    }
   };
 
   return (
@@ -75,19 +130,19 @@ export const BuilderSidebar: React.FC = () => {
               name="Text Summarizer"
               description="Condenses long texts into concise summaries"
               icon={<Bot className="h-4 w-4" />}
-              onClick={() => handleAgentClick("Text Summarizer")}
+              onClick={() => handleAgentClick("Text Summarizer", "text_summarizer")}
             />
             <AgentCard
               name="Data Extractor"
               description="Pulls structured data from emails, PDFs and more"
               icon={<Database className="h-4 w-4" />}
-              onClick={() => handleAgentClick("Data Extractor")}
+              onClick={() => handleAgentClick("Data Extractor", "data_extractor")}
             />
             <AgentCard
               name="Research Assistant"
               description="Searches and compiles information on a topic"
               icon={<Search className="h-4 w-4" />}
-              onClick={() => handleAgentClick("Research Assistant")}
+              onClick={() => handleAgentClick("Research Assistant", "research_assistant")}
             />
           </div>
         </TabsContent>
