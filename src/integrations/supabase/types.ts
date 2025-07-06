@@ -9,7 +9,248 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      agents: {
+        Row: {
+          configuration: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          type: Database["public"]["Enums"]["agent_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          configuration?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          type: Database["public"]["Enums"]["agent_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          configuration?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          type?: Database["public"]["Enums"]["agent_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      integrations: {
+        Row: {
+          configuration: Json | null
+          created_at: string
+          credentials: Json | null
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["integration_status"]
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          configuration?: Json | null
+          created_at?: string
+          credentials?: Json | null
+          id?: string
+          name: string
+          status?: Database["public"]["Enums"]["integration_status"]
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          configuration?: Json | null
+          created_at?: string
+          credentials?: Json | null
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["integration_status"]
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prompt_templates: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          is_public: boolean | null
+          title: string
+          updated_at: string
+          usage_count: number | null
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_public?: boolean | null
+          title: string
+          updated_at?: string
+          usage_count?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_public?: boolean | null
+          title?: string
+          updated_at?: string
+          usage_count?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      workflow_executions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          input_data: Json | null
+          output_data: Json | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["execution_status"]
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["execution_status"]
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["execution_status"]
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_executions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflows: {
+        Row: {
+          configuration: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          last_run_at: string | null
+          name: string
+          status: Database["public"]["Enums"]["workflow_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          configuration?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_run_at?: string | null
+          name: string
+          status?: Database["public"]["Enums"]["workflow_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          configuration?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          status?: Database["public"]["Enums"]["workflow_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +259,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      agent_type:
+        | "text_summarizer"
+        | "data_extractor"
+        | "research_assistant"
+        | "custom"
+      execution_status: "pending" | "running" | "completed" | "failed"
+      integration_status: "connected" | "disconnected" | "error"
+      workflow_status: "draft" | "active" | "paused" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +381,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      agent_type: [
+        "text_summarizer",
+        "data_extractor",
+        "research_assistant",
+        "custom",
+      ],
+      execution_status: ["pending", "running", "completed", "failed"],
+      integration_status: ["connected", "disconnected", "error"],
+      workflow_status: ["draft", "active", "paused", "archived"],
+    },
   },
 } as const
