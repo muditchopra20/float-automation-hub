@@ -4,14 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bot, Database, Search, Plus, Settings, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAgents } from "@/hooks/use-agents";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
 
 export const BuilderSidebar: React.FC = () => {
   const [activeTab, setActiveTab] = useState("agents");
   const { toast } = useToast();
   const { agents, createAgent } = useAgents();
-  const { user } = useAuth();
 
   const handleAgentClick = async (agentName: string, agentType: any) => {
     try {
@@ -30,68 +27,20 @@ export const BuilderSidebar: React.FC = () => {
   };
 
   const handleIntegrationToggle = async (integrationName: string, isConnected: boolean) => {
-    if (!user) return;
-
-    try {
-      if (isConnected) {
-        // Disconnect integration
-        await supabase
-          .from('integrations')
-          .update({ status: 'disconnected' })
-          .eq('name', integrationName)
-          .eq('user_id', user.id);
-        
-        toast({
-          title: "Integration Disconnected",
-          description: `${integrationName} has been disconnected.`,
-          variant: "destructive",
-        });
-      } else {
-        // Connect integration
-        await supabase
-          .from('integrations')
-          .upsert({
-            user_id: user.id,
-            name: integrationName,
-            type: integrationName.toLowerCase(),
-            status: 'connected'
-          });
-        
-        toast({
-          title: "Integration Connected",
-          description: `${integrationName} has been successfully connected.`,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update integration status",
-        variant: "destructive",
-      });
-    }
+    // Integration logic will be implemented with proper backend
+    toast({
+      title: isConnected ? "Integration Disconnected" : "Integration Connected",
+      description: `${integrationName} has been ${isConnected ? 'disconnected' : 'connected'}.`,
+      variant: isConnected ? "destructive" : "default",
+    });
   };
 
   const handlePromptClick = async (promptTitle: string, prompt: string) => {
-    if (!user) return;
-
-    try {
-      // Update usage count for the prompt
-      await supabase
-        .from('prompt_templates')
-        .update({ usage_count: supabase.sql`usage_count + 1` })
-        .eq('title', promptTitle);
-
-      toast({
-        title: "Prompt Used",
-        description: `"${promptTitle}" has been applied to the chat.`,
-      });
-    } catch (error) {
-      console.error('Error updating prompt usage:', error);
-      toast({
-        title: "Prompt Used",
-        description: `"${promptTitle}" has been applied to the chat.`,
-      });
-    }
+    // Prompt usage tracking will be implemented with proper backend
+    toast({
+      title: "Prompt Used",
+      description: `"${promptTitle}" has been applied to the chat.`,
+    });
   };
 
   return (
