@@ -28,7 +28,17 @@ export const useChat = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
+      
+      // Transform the data to match our ChatMessage interface
+      const transformedMessages: ChatMessage[] = (data || []).map(msg => ({
+        id: msg.id,
+        role: msg.role as 'user' | 'assistant' | 'system',
+        content: msg.content,
+        metadata: msg.metadata,
+        created_at: msg.created_at
+      }));
+      
+      setMessages(transformedMessages);
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
