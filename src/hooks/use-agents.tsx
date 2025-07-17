@@ -7,11 +7,17 @@ interface Agent {
   id: string;
   name: string;
   type: 'text_summarizer' | 'data_extractor' | 'research_assistant' | 'custom';
-  description: string;
+  description: string | null;
   configuration: any;
-  is_active: boolean;
+  is_active: boolean | null;
   created_at: string;
   updated_at: string;
+  system_prompt?: string | null;
+  tool_access?: any; // Changed to allow both JSON and parsed data
+  execution_mode?: string | null;
+  has_memory?: boolean | null;
+  attached_files?: any; // Changed to allow both JSON and parsed data
+  enable_logs?: boolean | null;
 }
 
 export const useAgents = () => {

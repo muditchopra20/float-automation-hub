@@ -16,34 +16,52 @@ export type Database = {
     Tables: {
       agents: {
         Row: {
+          attached_files: Json | null
           configuration: Json | null
           created_at: string
           description: string | null
+          enable_logs: boolean | null
+          execution_mode: string | null
+          has_memory: boolean | null
           id: string
           is_active: boolean | null
           name: string
+          system_prompt: string | null
+          tool_access: Json | null
           type: Database["public"]["Enums"]["agent_type"]
           updated_at: string
           user_id: string
         }
         Insert: {
+          attached_files?: Json | null
           configuration?: Json | null
           created_at?: string
           description?: string | null
+          enable_logs?: boolean | null
+          execution_mode?: string | null
+          has_memory?: boolean | null
           id?: string
           is_active?: boolean | null
           name: string
+          system_prompt?: string | null
+          tool_access?: Json | null
           type: Database["public"]["Enums"]["agent_type"]
           updated_at?: string
           user_id: string
         }
         Update: {
+          attached_files?: Json | null
           configuration?: Json | null
           created_at?: string
           description?: string | null
+          enable_logs?: boolean | null
+          execution_mode?: string | null
+          has_memory?: boolean | null
           id?: string
           is_active?: boolean | null
           name?: string
+          system_prompt?: string | null
+          tool_access?: Json | null
           type?: Database["public"]["Enums"]["agent_type"]
           updated_at?: string
           user_id?: string
