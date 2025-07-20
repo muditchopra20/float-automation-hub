@@ -63,13 +63,13 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Flo AI Custom Colors
-				'urban-blue': '#5B6CFF',
-				'violet': '#7E53FF',
-				'mint': '#D5FFE1',
-				'soft-gray': '#F1F0FB',
-				'neutral-gray': '#8E9196',
-				'light-gray': '#C8C8C9',
+				// Flo AI Custom Colors (HSL values)
+				'urban-blue': 'hsl(232, 88.7%, 67.8%)',
+				'violet': 'hsl(260, 100%, 66.3%)',
+				'mint': 'hsl(150, 100%, 92.2%)',
+				'soft-gray': 'hsl(240, 70%, 98%)',
+				'neutral-gray': 'hsl(220, 5%, 56%)',
+				'light-gray': 'hsl(240, 2%, 78%)',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
