@@ -145,7 +145,11 @@ const Dashboard = () => {
               ) : agents.length > 0 ? (
                 <div className="space-y-4">
                   {agents.slice(0, 5).map(agent => (
-                    <div key={agent.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <Link 
+                      key={agent.id} 
+                      to="/agents"
+                      className="flex items-center justify-between p-3 border rounded-lg hover:border-urban-blue/50 transition-colors cursor-pointer"
+                    >
                       <div>
                         <h4 className="font-medium">{agent.name}</h4>
                         <p className="text-sm text-gray-600">{agent.description}</p>
@@ -155,7 +159,7 @@ const Dashboard = () => {
                       }`}>
                         {agent.is_active ? 'Active' : 'Inactive'}
                       </span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (

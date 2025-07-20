@@ -5,12 +5,27 @@ import { Bot, Database, Search, Plus, Settings, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAgents } from "@/hooks/use-agents";
 
-export const BuilderSidebar: React.FC = () => {
+interface BuilderSidebarProps {
+  onAgentSelect?: (agentName: string) => void;
+}
+
+export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({ onAgentSelect }) => {
   const [activeTab, setActiveTab] = useState("agents");
   const { toast } = useToast();
   const { agents, createAgent } = useAgents();
 
   const handleAgentClick = async (agentName: string, agentType: any) => {
+    // If onAgentSelect is provided, use it to add agent mention to chat
+    if (onAgentSelect) {
+      onAgentSelect(agentName);
+      toast({
+        title: "Agent Tagged",
+        description: `@${agentName} has been added to your message.`,
+      });
+      return;
+    }
+
+    // Fallback to previous behavior
     try {
       await createAgent(agentName, agentType, `Configured ${agentName} for workflow automation`);
       toast({
@@ -93,6 +108,17 @@ export const BuilderSidebar: React.FC = () => {
               icon={<Search className="h-4 w-4" />}
               onClick={() => handleAgentClick("Research Assistant", "research_assistant")}
             />
+            
+            {/* User's custom agents */}
+            {agents.map(agent => (
+              <AgentCard
+                key={agent.id}
+                name={agent.name}
+                description={agent.description || "Custom AI agent"}
+                icon={<Bot className="h-4 w-4" />}
+                onClick={() => handleAgentClick(agent.name, agent.type)}
+              />
+            ))}
           </div>
         </TabsContent>
         <TabsContent value="integrations" className="flex-1 p-4 overflow-y-auto">

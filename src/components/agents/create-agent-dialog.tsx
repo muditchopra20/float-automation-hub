@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CheckIcon, PlusCircle, UploadCloud, X } from "lucide-react";
+import { CheckIcon, PlusCircle, UploadCloud, X, Edit } from "lucide-react";
 import { useAgents } from '@/hooks/use-agents';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { useToast } from '@/hooks/use-toast';
@@ -66,13 +66,29 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface Agent {
+  id: string;
+  name: string;
+  type: 'text_summarizer' | 'data_extractor' | 'research_assistant' | 'custom';
+  description: string | null;
+  system_prompt?: string | null;
+  tool_access?: any;
+  execution_mode?: string | null;
+  has_memory?: boolean | null;
+  attached_files?: any;
+  enable_logs?: boolean | null;
+  is_active: boolean | null;
+}
+
 interface CreateAgentDialogProps {
   trigger?: React.ReactNode;
   onSuccess?: () => void;
+  agent?: Agent; // For editing existing agents
 }
 
-export function CreateAgentDialog({ trigger, onSuccess }: CreateAgentDialogProps) {
-  const { createAgent } = useAgents();
+export function CreateAgentDialog({ trigger, onSuccess, agent }: CreateAgentDialogProps) {
+  const { createAgent, updateAgent } = useAgents();
+  const isEditing = !!agent;
   const { integrations } = useIntegrations();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -92,6 +108,31 @@ export function CreateAgentDialog({ trigger, onSuccess }: CreateAgentDialogProps
       enableLogs: true,
     },
   });
+
+  // Populate form when editing
+  useEffect(() => {
+    if (agent) {
+      form.reset({
+        name: agent.name || "",
+        description: agent.description || "",
+        systemPrompt: agent.system_prompt || "",
+        executionMode: (agent.execution_mode as any) || "Manual",
+        hasMemory: agent.has_memory || false,
+        enableLogs: agent.enable_logs !== false, // Default to true
+      });
+      
+      // Set selected tools
+      if (Array.isArray(agent.tool_access)) {
+        setSelectedTools(agent.tool_access);
+      }
+      
+      // Set attached files (if any)
+      if (Array.isArray(agent.attached_files)) {
+        // Note: For editing, we'll show file names but can't recreate File objects
+        // This is a limitation of the web platform
+      }
+    }
+  }, [agent, form]);
 
   const handleToolSelect = (toolName: string) => {
     setSelectedTools((prev) => {
@@ -126,39 +167,61 @@ export function CreateAgentDialog({ trigger, onSuccess }: CreateAgentDialogProps
         type: file.type
       }));
 
-      const agent = await createAgent(
-        values.name, 
-        'custom',
-        values.description
-      );
-
-      if (agent) {
-        // Update the agent with additional configuration
-        await updateAgentConfiguration(agent.id, {
-          ...values,
-          toolAccess: selectedTools,
-          attachedFiles: fileData
+      if (isEditing && agent) {
+        // Update existing agent
+        await updateAgent(agent.id, {
+          name: values.name,
+          description: values.description,
+          system_prompt: values.systemPrompt,
+          tool_access: selectedTools,
+          execution_mode: values.executionMode,
+          has_memory: values.hasMemory,
+          attached_files: fileData,
+          enable_logs: values.enableLogs,
         });
 
         toast({
-          title: "Agent created",
-          description: `${values.name} has been created successfully.`,
+          title: "Agent updated",
+          description: `${values.name} has been updated successfully.`,
         });
+      } else {
+        // Create new agent
+        const newAgent = await createAgent(
+          values.name, 
+          'custom',
+          values.description
+        );
 
-        // Reset form and close dialog
+        if (newAgent) {
+          // Update the agent with additional configuration
+          await updateAgentConfiguration(newAgent.id, {
+            ...values,
+            toolAccess: selectedTools,
+            attachedFiles: fileData
+          });
+
+          toast({
+            title: "Agent created",
+            description: `${values.name} has been created successfully.`,
+          });
+        }
+      }
+
+      // Reset form and close dialog
+      if (!isEditing) {
         form.reset();
         setSelectedTools([]);
         setAttachedFiles([]);
-        setOpen(false);
-
-        // Call onSuccess callback if provided
-        if (onSuccess) onSuccess();
       }
+      setOpen(false);
+
+      // Call onSuccess callback if provided
+      if (onSuccess) onSuccess();
     } catch (error) {
-      console.error("Error creating agent:", error);
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} agent:`, error);
       toast({
         title: "Error",
-        description: "Failed to create agent. Please try again.",
+        description: `Failed to ${isEditing ? 'update' : 'create'} agent. Please try again.`,
         variant: "destructive",
       });
     } finally {
@@ -206,9 +269,9 @@ export function CreateAgentDialog({ trigger, onSuccess }: CreateAgentDialogProps
       
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create AI Agent</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit AI Agent' : 'Create AI Agent'}</DialogTitle>
           <DialogDescription>
-            Create a new AI agent to help automate tasks and workflows
+            {isEditing ? 'Update your AI agent configuration' : 'Create a new AI agent to help automate tasks and workflows'}
           </DialogDescription>
         </DialogHeader>
 
@@ -447,7 +510,7 @@ export function CreateAgentDialog({ trigger, onSuccess }: CreateAgentDialogProps
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Agent"}
+                {isSubmitting ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Agent" : "Create Agent")}
               </Button>
             </DialogFooter>
           </form>

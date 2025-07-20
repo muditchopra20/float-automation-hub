@@ -3,7 +3,7 @@ import React from 'react';
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { PlusCircle, User, AlertCircle } from "lucide-react";
+import { PlusCircle, User, AlertCircle, Edit } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateAgentDialog } from "@/components/agents/create-agent-dialog";
 import { useAgents } from '@/hooks/use-agents';
@@ -51,11 +51,11 @@ const Agents = () => {
             </AlertDescription>
           </Alert>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {agents.map((agent) => (
-              <AgentCard key={agent.id} agent={agent} />
-            ))}
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {agents.map((agent) => (
+                  <AgentCard key={agent.id} agent={agent} onEdit={refetch} />
+                ))}
+              </div>
         )}
       </main>
     </div>
@@ -69,10 +69,17 @@ interface AgentCardProps {
     description: string | null;
     type: 'text_summarizer' | 'data_extractor' | 'research_assistant' | 'custom';
     is_active: boolean | null;
+    system_prompt?: string | null;
+    tool_access?: any;
+    execution_mode?: string | null;
+    has_memory?: boolean | null;
+    attached_files?: any;
+    enable_logs?: boolean | null;
   };
+  onEdit: () => void;
 }
 
-const AgentCard: React.FC<AgentCardProps> = ({ agent }) => {
+const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit }) => {
   // Derive status from is_active
   const status = agent.is_active ? "Active" : "Draft";
   
@@ -94,16 +101,28 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent }) => {
         <CardDescription>{agent.description || "No description"}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex justify-between items-center mt-2">
+        <div className="space-y-3">
           <div className="flex items-center text-sm text-neutral-gray">
             <User className="h-4 w-4 mr-1" />
             <span>Personal</span>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/agents/${agent.id}`}>
-              Configure
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <CreateAgentDialog 
+              agent={agent} 
+              onSuccess={onEdit}
+              trigger={
+                <Button variant="outline" size="sm" className="flex-1">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              }
+            />
+            <Button variant="outline" size="sm" className="flex-1" asChild>
+              <Link to={`/agents/${agent.id}/configure`}>
+                Configure
+              </Link>
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

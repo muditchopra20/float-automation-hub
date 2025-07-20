@@ -18,6 +18,7 @@ const Builder = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('openai-api-key') || '');
+  const [currentMessage, setCurrentMessage] = useState('');
   const { toast } = useToast();
 
   const handleSendMessage = async (message: string) => {
@@ -98,12 +99,22 @@ const Builder = () => {
     localStorage.setItem('openai-api-key', key);
   };
 
+  const handleAgentSelect = (agentName: string) => {
+    setCurrentMessage(prev => {
+      const mention = `@${agentName.toLowerCase().replace(/\s+/g, '_')}`;
+      if (prev.trim()) {
+        return `${prev} ${mention} `;
+      }
+      return `${mention} `;
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 flex flex-col md:flex-row pt-16">
         <div className="hidden md:block">
-          <BuilderSidebar />
+          <BuilderSidebar onAgentSelect={handleAgentSelect} />
         </div>
         <div className="flex-1 bg-gray-50 flex flex-col dark:bg-gray-900/90 transition-colors">
           {/* Main Chat Section */}
@@ -138,7 +149,7 @@ const Builder = () => {
             </div>
           </div>
           
-          <ChatInput onSend={handleSendMessage} />
+          <ChatInput onSend={handleSendMessage} value={currentMessage} onChange={setCurrentMessage} />
         </div>
       </main>
     </div>

@@ -27,6 +27,9 @@ export const ChatboxPreview: React.FC = () => {
       return;
     }
 
+    // Redirect to builder page after sending message
+    navigate("/builder");
+
     try {
       await sendMessage(message);
       
