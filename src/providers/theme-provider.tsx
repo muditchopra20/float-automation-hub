@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -13,19 +12,41 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
       
       setTimeout(() => {
         document.documentElement.classList.remove('transitioning');
-      }, 200);
+      }, 300);
     };
 
     // Listen for theme changes
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', handleThemeChange);
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', handleThemeChange);
+
+    // Listen for manual theme changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          handleThemeChange();
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
 
     return () => {
-      window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', handleThemeChange);
+      mediaQuery.removeEventListener('change', handleThemeChange);
+      observer.disconnect();
     };
   }, []);
 
   return (
-    <NextThemesProvider {...props}>
+    <NextThemesProvider 
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange={false}
+      {...props}
+    >
       {children}
     </NextThemesProvider>
   );

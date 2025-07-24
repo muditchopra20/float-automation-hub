@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -123,10 +122,10 @@ export default {
 				},
 				'pulse-glow': {
 					'0%, 100%': {
-						boxShadow: '0 0 15px 0 rgba(123, 104, 238, 0.2)'
+						boxShadow: '0 0 15px 0 rgba(91, 108, 255, 0.2)'
 					},
 					'50%': {
-						boxShadow: '0 0 25px 5px rgba(123, 104, 238, 0.4)'
+						boxShadow: '0 0 25px 5px rgba(91, 108, 255, 0.4)'
 					}
 				}
 			},
@@ -137,6 +136,13 @@ export default {
 				'fade-out': 'fade-out 0.5s ease-out',
 				'float': 'float 6s ease-in-out infinite',
 				'pulse-glow': 'pulse-glow 3s ease-in-out infinite'
+			},
+			fontFamily: {
+				'inter': ['Inter', 'sans-serif'],
+			},
+			boxShadow: {
+				'glow': '0 0 20px rgba(91, 108, 255, 0.3)',
+				'glow-lg': '0 0 30px rgba(91, 108, 255, 0.4)',
 			}
 		}
 	},
