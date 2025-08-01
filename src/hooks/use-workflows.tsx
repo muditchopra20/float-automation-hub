@@ -9,6 +9,7 @@ interface Workflow {
   description: string;
   status: 'draft' | 'active' | 'paused' | 'archived';
   configuration: any;
+  json_definition?: any;
   last_run_at: string | null;
   created_at: string;
   updated_at: string;

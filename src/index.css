@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* React Flow Custom Styles */
+.workflow-handle {
+  background-color: hsl(var(--background));
+  border: 2px solid hsl(var(--border));
+  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+}
+
+.workflow-handle:hover {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--primary));
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
