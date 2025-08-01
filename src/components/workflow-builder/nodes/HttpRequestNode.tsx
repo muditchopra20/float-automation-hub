@@ -1,16 +1,18 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Globe } from 'lucide-react';
+import NodeExecutionStatus from '../NodeExecutionStatus';
 
 interface HttpRequestNodeData {
   url?: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   label?: string;
+  executionStatus?: 'pending' | 'running' | 'completed' | 'failed' | 'idle';
 }
 
 function HttpRequestNode({ data }: { data: HttpRequestNodeData }) {
   return (
-    <div className="px-4 py-3 bg-card border border-border rounded-lg shadow-sm min-w-[180px]">
+    <div className="px-4 py-3 bg-card border border-border rounded-lg shadow-sm min-w-[180px] relative">
       <Handle type="target" position={Position.Top} className="workflow-handle" />
       
       <div className="flex items-center gap-2 mb-2">
@@ -32,6 +34,7 @@ function HttpRequestNode({ data }: { data: HttpRequestNodeData }) {
       </div>
       
       <Handle type="source" position={Position.Bottom} className="workflow-handle" />
+      <NodeExecutionStatus status={data.executionStatus} />
     </div>
   );
 }

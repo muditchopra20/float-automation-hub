@@ -1,16 +1,18 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Brain } from 'lucide-react';
+import NodeExecutionStatus from '../NodeExecutionStatus';
 
 interface GptPromptNodeData {
   prompt?: string;
   model?: string;
   label?: string;
+  executionStatus?: 'pending' | 'running' | 'completed' | 'failed' | 'idle';
 }
 
 function GptPromptNode({ data }: { data: GptPromptNodeData }) {
   return (
-    <div className="px-4 py-3 bg-card border border-border rounded-lg shadow-sm min-w-[180px]">
+    <div className="px-4 py-3 bg-card border border-border rounded-lg shadow-sm min-w-[180px] relative">
       <Handle type="target" position={Position.Top} className="workflow-handle" />
       
       <div className="flex items-center gap-2 mb-2">
@@ -32,6 +34,7 @@ function GptPromptNode({ data }: { data: GptPromptNodeData }) {
       </div>
       
       <Handle type="source" position={Position.Bottom} className="workflow-handle" />
+      <NodeExecutionStatus status={data.executionStatus} />
     </div>
   );
 }

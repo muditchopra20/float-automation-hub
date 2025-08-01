@@ -1,15 +1,17 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { GitBranch } from 'lucide-react';
+import NodeExecutionStatus from '../NodeExecutionStatus';
 
 interface ConditionNodeData {
   condition?: string;
   label?: string;
+  executionStatus?: 'pending' | 'running' | 'completed' | 'failed' | 'idle';
 }
 
 function ConditionNode({ data }: { data: ConditionNodeData }) {
   return (
-    <div className="px-4 py-3 bg-card border border-border rounded-lg shadow-sm min-w-[180px]">
+    <div className="px-4 py-3 bg-card border border-border rounded-lg shadow-sm min-w-[180px] relative">
       <Handle type="target" position={Position.Top} className="workflow-handle" />
       
       <div className="flex items-center gap-2 mb-2">
@@ -46,6 +48,8 @@ function ConditionNode({ data }: { data: ConditionNodeData }) {
         <span>True</span>
         <span>False</span>
       </div>
+      
+      <NodeExecutionStatus status={data.executionStatus} />
     </div>
   );
 }
