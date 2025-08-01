@@ -18,7 +18,7 @@ export const useWorkflowExecutor = () => {
 
     setExecuting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('workflow-executor', {
+      const { data, error } = await supabase.functions.invoke('workflow-execution-engine', {
         body: { 
           workflowId,
           inputData: inputData || {}
@@ -41,7 +41,7 @@ export const useWorkflowExecutor = () => {
 
     try {
       const { data, error } = await supabase
-        .from('workflow_executions')
+        .from('executions')
         .select('*')
         .eq('workflow_id', workflowId)
         .order('created_at', { ascending: false });
