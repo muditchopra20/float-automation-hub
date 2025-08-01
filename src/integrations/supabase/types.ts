@@ -95,6 +95,109 @@ export type Database = {
         }
         Relationships: []
       }
+      credentials: {
+        Row: {
+          created_at: string
+          encrypted_value: string
+          id: string
+          name: string
+          type: Database["public"]["Enums"]["credential_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_value: string
+          id?: string
+          name: string
+          type: Database["public"]["Enums"]["credential_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_value?: string
+          id?: string
+          name?: string
+          type?: Database["public"]["Enums"]["credential_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      execution_logs: {
+        Row: {
+          execution_id: string
+          id: string
+          level: Database["public"]["Enums"]["log_level"]
+          message: string
+          node_id: string
+          timestamp: string
+        }
+        Insert: {
+          execution_id: string
+          id?: string
+          level?: Database["public"]["Enums"]["log_level"]
+          message: string
+          node_id: string
+          timestamp?: string
+        }
+        Update: {
+          execution_id?: string
+          id?: string
+          level?: Database["public"]["Enums"]["log_level"]
+          message?: string
+          node_id?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "execution_logs_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "executions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      executions: {
+        Row: {
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          output: Json | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["execution_status"]
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          output?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["execution_status"]
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          output?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["execution_status"]
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "executions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
           configuration: Json | null
@@ -244,6 +347,8 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_active: boolean | null
+          json_definition: Json | null
           last_run_at: string | null
           name: string
           status: Database["public"]["Enums"]["workflow_status"]
@@ -255,6 +360,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean | null
+          json_definition?: Json | null
           last_run_at?: string | null
           name: string
           status?: Database["public"]["Enums"]["workflow_status"]
@@ -266,6 +373,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean | null
+          json_definition?: Json | null
           last_run_at?: string | null
           name?: string
           status?: Database["public"]["Enums"]["workflow_status"]
@@ -287,8 +396,16 @@ export type Database = {
         | "data_extractor"
         | "research_assistant"
         | "custom"
+      credential_type:
+        | "openai"
+        | "smtp"
+        | "webhook"
+        | "api_key"
+        | "oauth"
+        | "database"
       execution_status: "pending" | "running" | "completed" | "failed"
       integration_status: "connected" | "disconnected" | "error"
+      log_level: "debug" | "info" | "warn" | "error"
       workflow_status: "draft" | "active" | "paused" | "archived"
     }
     CompositeTypes: {
@@ -423,8 +540,17 @@ export const Constants = {
         "research_assistant",
         "custom",
       ],
+      credential_type: [
+        "openai",
+        "smtp",
+        "webhook",
+        "api_key",
+        "oauth",
+        "database",
+      ],
       execution_status: ["pending", "running", "completed", "failed"],
       integration_status: ["connected", "disconnected", "error"],
+      log_level: ["debug", "info", "warn", "error"],
       workflow_status: ["draft", "active", "paused", "archived"],
     },
   },

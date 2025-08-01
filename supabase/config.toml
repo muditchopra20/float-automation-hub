@@ -7,5 +7,8 @@ verify_jwt = true
 [functions.workflow-executor]
 verify_jwt = true
 
+[functions.workflow-execution-engine]
+verify_jwt = true
+
 [functions.integration-manager]
 verify_jwt = true
