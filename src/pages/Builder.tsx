@@ -4,33 +4,33 @@ import { Navbar } from "@/components/layout/navbar";
 import { BuilderSidebar } from "@/components/builder/builder-sidebar";
 import { ChatInput } from "@/components/builder/chat-input";
 import { ChatMessage } from "@/components/builder/chat-message";
-import { ApiKeyInput } from "@/components/builder/api-key-input";
+import { useWorkflowConversion } from "@/hooks/use-workflow-conversion";
+import { useExecutions } from "@/hooks/use-executions";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  workflowId?: string;
+  actions?: Array<{
+    type: 'activate' | 'execute' | 'edit';
+    label: string;
+    workflowId?: string;
+  }>;
 }
 
 const Builder = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiKey, setApiKey] = useState(localStorage.getItem('openai-api-key') || '');
   const [currentMessage, setCurrentMessage] = useState('');
+  const { convertMessageToWorkflow, converting } = useWorkflowConversion();
+  const { executeWorkflow } = useExecutions();
   const { toast } = useToast();
 
   const handleSendMessage = async (message: string) => {
-    if (!apiKey) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your OpenAI API key to start chatting.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -42,61 +42,72 @@ const Builder = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are Flo, an AI assistant that helps users create workflow automations. You are knowledgeable about various apps, APIs, and automation tools. Help users design efficient workflows and provide specific, actionable advice about automation.'
-            },
-            ...messages.map(msg => ({
-              role: msg.role,
-              content: msg.content
-            })),
-            {
-              role: 'user',
-              content: message
-            }
-          ],
-          max_tokens: 1000,
-          temperature: 0.7,
-        }),
+      // Convert natural language to workflow
+      const result = await convertMessageToWorkflow(message, {
+        agentMentions: message.match(/@[\w_]+/g) || []
       });
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
-
-      const data = await response.json();
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.choices[0].message.content,
+        content: result.message,
         timestamp: new Date(),
+        workflowId: result.workflowId,
+        actions: [
+          {
+            type: 'activate',
+            label: 'Activate Workflow',
+            workflowId: result.workflowId
+          },
+          {
+            type: 'execute',
+            label: 'Test Run',
+            workflowId: result.workflowId
+          }
+        ]
       };
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Chat error:', error);
-      toast({
-        title: "Chat Error",
-        description: "Failed to get response. Please check your API key and try again.",
-        variant: "destructive",
-      });
+      console.error('Workflow conversion error:', error);
+      
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: error.message.includes('OpenAI API key') 
+          ? "I need your OpenAI API key to create workflows. Please add it to your credentials first."
+          : `Sorry, I couldn't create a workflow from that request. Error: ${error.message}`,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleApiKeyChange = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem('openai-api-key', key);
+  const handleWorkflowAction = async (action: string, workflowId: string) => {
+    try {
+      if (action === 'execute') {
+        await executeWorkflow(workflowId, {});
+        toast({
+          title: "Workflow Executed",
+          description: "Your workflow has been started successfully!",
+        });
+      } else if (action === 'activate') {
+        // Update workflow to active status
+        toast({
+          title: "Workflow Activated",
+          description: "Your workflow is now active and ready to run!",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Action Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAgentSelect = (agentName: string) => {
@@ -121,7 +132,7 @@ const Builder = () => {
           <div className="flex-1 flex flex-col">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
               <h2 className="text-lg font-semibold dark:text-white">Chat with Flo</h2>
-              <ApiKeyInput apiKey={apiKey} onApiKeyChange={handleApiKeyChange} />
+              <p className="text-sm text-gray-600 dark:text-gray-400">Create workflows by describing what you want to automate</p>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -132,7 +143,11 @@ const Builder = () => {
               )}
               
               {messages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} />
+                <ChatMessage 
+                  key={msg.id} 
+                  message={msg} 
+                  onAction={handleWorkflowAction}
+                />
               ))}
               
               {isLoading && (
