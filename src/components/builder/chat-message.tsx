@@ -10,8 +10,12 @@ interface ChatMessageProps {
     content: string;
     timestamp: Date;
     workflowId?: string;
+    requiresInfo?: {
+      type: 'credentials' | 'trigger' | 'actions' | 'conditions';
+      fields: string[];
+    };
     actions?: Array<{
-      type: 'activate' | 'execute' | 'edit';
+      type: 'activate' | 'execute' | 'edit' | 'provide_info';
       label: string;
       workflowId?: string;
     }>;
