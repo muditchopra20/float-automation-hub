@@ -25,6 +25,7 @@ export type Database = {
           has_memory: boolean | null
           id: string
           is_active: boolean | null
+          memory_vector_id: string | null
           name: string
           system_prompt: string | null
           tool_access: Json | null
@@ -42,6 +43,7 @@ export type Database = {
           has_memory?: boolean | null
           id?: string
           is_active?: boolean | null
+          memory_vector_id?: string | null
           name: string
           system_prompt?: string | null
           tool_access?: Json | null
@@ -59,6 +61,7 @@ export type Database = {
           has_memory?: boolean | null
           id?: string
           is_active?: boolean | null
+          memory_vector_id?: string | null
           name?: string
           system_prompt?: string | null
           tool_access?: Json | null
@@ -159,7 +162,9 @@ export type Database = {
       }
       executions: {
         Row: {
+          context: Json | null
           created_at: string
+          cursor: string | null
           error: string | null
           finished_at: string | null
           id: string
@@ -169,7 +174,9 @@ export type Database = {
           workflow_id: string
         }
         Insert: {
+          context?: Json | null
           created_at?: string
+          cursor?: string | null
           error?: string | null
           finished_at?: string | null
           id?: string
@@ -179,7 +186,9 @@ export type Database = {
           workflow_id: string
         }
         Update: {
+          context?: Json | null
           created_at?: string
+          cursor?: string | null
           error?: string | null
           finished_at?: string | null
           id?: string
