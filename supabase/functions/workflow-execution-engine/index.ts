@@ -233,6 +233,80 @@ class GptPromptHandler extends BaseNodeHandler {
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
     }
+
+    let finalPrompt = params.prompt;
+    
+    // If this node has an agent_id, enhance with memory and persona
+    if (params.agent_id) {
+      try {
+        // Get agent persona
+        const { data: persona } = await context.supabase
+          .from('agent_personas')
+          .select('*')
+          .eq('agent_id', params.agent_id)
+          .single();
+
+        // Search for relevant memories
+        let relevantMemories: string[] = [];
+        if (params.prompt) {
+          // Generate embedding for the prompt to search memories
+          const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'text-embedding-3-small',
+              input: params.prompt,
+              encoding_format: 'float'
+            }),
+          });
+          
+          if (embeddingResponse.ok) {
+            const embeddingData = await embeddingResponse.json();
+            const queryEmbedding = embeddingData.data[0].embedding;
+            
+            // Search for similar memories
+            const { data: memories } = await context.supabase.rpc('search_agent_memories', {
+              query_embedding: JSON.stringify(queryEmbedding),
+              target_agent_id: params.agent_id,
+              match_threshold: 0.7,
+              match_count: 5
+            });
+            
+            if (memories) {
+              relevantMemories = memories.map((memory: any) => memory.content);
+            }
+          }
+        }
+
+        // Enhanced prompt with persona and memories
+        if (persona) {
+          finalPrompt = `You are ${persona.persona_name}, an AI assistant with the following characteristics:
+
+**Personality Traits:** ${persona.personality_traits?.join(', ') || 'helpful, friendly'}
+**Communication Style:** ${persona.communication_style || 'professional'}
+**Areas of Expertise:** ${persona.expertise_areas?.join(', ') || 'general assistance'}
+**Tone:** ${persona.tone || 'professional'}
+**Language:** ${persona.language || 'en'}
+
+${persona.custom_instructions ? `**Custom Instructions:** ${persona.custom_instructions}` : ''}`;
+
+          if (relevantMemories.length > 0) {
+            finalPrompt += `\n\n**Relevant Context from Past Interactions:**
+${relevantMemories.map((memory, index) => `${index + 1}. ${memory}`).join('\n')}`;
+          }
+
+          finalPrompt += `\n\n**Current Request:** ${params.prompt}
+
+Respond in character, using your personality traits and communication style. Use the context from past interactions when relevant.`;
+        }
+      } catch (error) {
+        console.warn('Failed to enhance prompt with agent memory/persona:', error);
+        // Continue with original prompt if enhancement fails
+      }
+    }
     
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -244,7 +318,7 @@ class GptPromptHandler extends BaseNodeHandler {
         body: JSON.stringify({
           model: params.model || 'gpt-4o-mini',
           messages: [
-            { role: 'user', content: params.prompt }
+            { role: 'user', content: finalPrompt }
           ],
           temperature: params.temperature || 0.7,
         }),
@@ -252,6 +326,50 @@ class GptPromptHandler extends BaseNodeHandler {
       
       const data = await response.json();
       const result = data.choices[0].message.content;
+      
+      // Store the interaction in agent memory if agent_id is provided
+      if (params.agent_id && finalPrompt && result) {
+        try {
+          // Generate embedding for the conversation
+          const conversationText = `User: ${params.prompt}\nAssistant: ${result}`;
+          
+          const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'text-embedding-3-small',
+              input: conversationText,
+              encoding_format: 'float'
+            }),
+          });
+          
+          if (embeddingResponse.ok) {
+            const embeddingData = await embeddingResponse.json();
+            const embedding = embeddingData.data[0].embedding;
+            
+            // Store in agent memory
+            await context.supabase
+              .from('agent_memories')
+              .insert({
+                agent_id: params.agent_id,
+                content: conversationText,
+                embedding: JSON.stringify(embedding),
+                metadata: {
+                  node_id: node.id,
+                  execution_id: context.executionId,
+                  model: params.model || 'gpt-4o-mini',
+                  timestamp: new Date().toISOString()
+                }
+              });
+          }
+        } catch (error) {
+          console.warn('Failed to store interaction in agent memory:', error);
+          // Don't fail the execution if memory storage fails
+        }
+      }
       
       return {
         outputData: [[{ json: { result, usage: data.usage } }]]

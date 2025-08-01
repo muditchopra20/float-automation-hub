@@ -15,3 +15,6 @@ verify_jwt = true
 
 [functions.integration-manager]
 verify_jwt = true
+
+[functions.generate-embedding]
+verify_jwt = true
