@@ -3,14 +3,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { useState } from 'react';
 
 export type CredentialType = 
-  | 'openai_api'
-  | 'google_api' 
-  | 'slack_api'
+  | 'openai'
   | 'smtp'
   | 'webhook'
-  | 'github_api'
-  | 'stripe_api'
-  | 'custom';
+  | 'api_key'
+  | 'oauth'
+  | 'database';
 
 interface Credential {
   id: string;
@@ -81,6 +79,7 @@ export const useCredentials = () => {
       const { error } = await supabase
         .from('credentials')
         .upsert({
+          user_id: user.id,
           type: credential.type,
           name: credential.name,
           encrypted_value: encryptedData.encrypted_value
@@ -131,7 +130,7 @@ export const useCredentials = () => {
   const getCredentialTypes = (): Array<{ type: CredentialType; label: string; description: string; fields: Array<{ name: string; label: string; type: string; placeholder: string }> }> => {
     return [
       {
-        type: 'openai_api',
+        type: 'openai',
         label: 'OpenAI API',
         description: 'API key for OpenAI GPT models and embeddings',
         fields: [
@@ -139,19 +138,12 @@ export const useCredentials = () => {
         ]
       },
       {
-        type: 'google_api',
-        label: 'Google API',
-        description: 'API key for Google services (Maps, Sheets, etc.)',
+        type: 'api_key',
+        label: 'API Key',
+        description: 'Generic API key for various services',
         fields: [
-          { name: 'api_key', label: 'API Key', type: 'password', placeholder: 'AIza...' }
-        ]
-      },
-      {
-        type: 'slack_api',
-        label: 'Slack API',
-        description: 'Bot token for Slack integrations',
-        fields: [
-          { name: 'bot_token', label: 'Bot Token', type: 'password', placeholder: 'xoxb-...' }
+          { name: 'api_key', label: 'API Key', type: 'password', placeholder: 'Your API key' },
+          { name: 'service_name', label: 'Service Name', type: 'text', placeholder: 'e.g., Google, GitHub' }
         ]
       },
       {
@@ -175,28 +167,20 @@ export const useCredentials = () => {
         ]
       },
       {
-        type: 'github_api',
-        label: 'GitHub API',
-        description: 'Personal access token for GitHub',
+        type: 'oauth',
+        label: 'OAuth Token',
+        description: 'OAuth access token for API authentication',
         fields: [
-          { name: 'token', label: 'Personal Access Token', type: 'password', placeholder: 'ghp_...' }
+          { name: 'access_token', label: 'Access Token', type: 'password', placeholder: 'Your OAuth token' },
+          { name: 'refresh_token', label: 'Refresh Token (optional)', type: 'password', placeholder: 'Refresh token' }
         ]
       },
       {
-        type: 'stripe_api',
-        label: 'Stripe API',
-        description: 'Secret key for Stripe payments',
+        type: 'database',
+        label: 'Database Connection',
+        description: 'Database connection string or credentials',
         fields: [
-          { name: 'secret_key', label: 'Secret Key', type: 'password', placeholder: 'sk_test_...' }
-        ]
-      },
-      {
-        type: 'custom',
-        label: 'Custom API',
-        description: 'Custom API credentials',
-        fields: [
-          { name: 'api_key', label: 'API Key', type: 'password', placeholder: 'Your API key' },
-          { name: 'base_url', label: 'Base URL (optional)', type: 'url', placeholder: 'https://api.example.com' }
+          { name: 'connection_string', label: 'Connection String', type: 'password', placeholder: 'postgresql://user:pass@host:port/db' }
         ]
       }
     ];
@@ -205,29 +189,21 @@ export const useCredentials = () => {
   // Validate credential format
   const validateCredential = (type: CredentialType, value: string): { valid: boolean; error?: string } => {
     switch (type) {
-      case 'openai_api':
+      case 'openai':
         if (!value.startsWith('sk-')) {
           return { valid: false, error: 'OpenAI API keys should start with "sk-"' };
         }
         break;
-      case 'google_api':
-        if (!value.startsWith('AIza')) {
-          return { valid: false, error: 'Google API keys should start with "AIza"' };
+      case 'api_key':
+        if (value.length < 8) {
+          return { valid: false, error: 'API key should be at least 8 characters long' };
         }
         break;
-      case 'slack_api':
-        if (!value.startsWith('xoxb-')) {
-          return { valid: false, error: 'Slack bot tokens should start with "xoxb-"' };
-        }
-        break;
-      case 'github_api':
-        if (!value.startsWith('ghp_') && !value.startsWith('github_pat_')) {
-          return { valid: false, error: 'GitHub tokens should start with "ghp_" or "github_pat_"' };
-        }
-        break;
-      case 'stripe_api':
-        if (!value.startsWith('sk_')) {
-          return { valid: false, error: 'Stripe secret keys should start with "sk_"' };
+      case 'webhook':
+        try {
+          new URL(value);
+        } catch {
+          return { valid: false, error: 'Please enter a valid URL' };
         }
         break;
     }
