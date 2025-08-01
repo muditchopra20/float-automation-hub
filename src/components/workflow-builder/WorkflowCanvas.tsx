@@ -20,9 +20,11 @@ import GptPromptNode from './nodes/GptPromptNode';
 import ConditionNode from './nodes/ConditionNode';
 import TriggerNode from './nodes/TriggerNode';
 import { useWorkflows } from '@/hooks/use-workflows';
+import { useWorkflowExecutor } from '@/hooks/use-workflow-executor';
 import { Button } from '@/components/ui/button';
 import { Save, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 const nodeTypes = {
   httpRequest: HttpRequestNode,
@@ -50,9 +52,27 @@ export function WorkflowCanvas({ workflowId }: WorkflowCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { updateWorkflow } = useWorkflows();
+  const { workflows, updateWorkflow } = useWorkflows();
+  const { executeWorkflow } = useWorkflowExecutor();
   const { toast } = useToast();
+
+  // Load workflow data when workflowId changes
+  useEffect(() => {
+    if (workflowId && workflows.length > 0) {
+      const workflow = workflows.find(w => w.id === workflowId);
+      if (workflow && workflow.json_definition) {
+        const definition = workflow.json_definition as any;
+        if (definition.nodes && Array.isArray(definition.nodes)) {
+          setNodes(definition.nodes);
+        }
+        if (definition.edges && Array.isArray(definition.edges)) {
+          setEdges(definition.edges);
+        }
+      }
+    }
+  }, [workflowId, workflows, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -153,6 +173,35 @@ export function WorkflowCanvas({ workflowId }: WorkflowCanvasProps) {
     }
   };
 
+  const runWorkflow = async () => {
+    if (!workflowId) {
+      toast({
+        title: "Error",
+        description: "No workflow selected to run",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExecuting(true);
+    try {
+      const result = await executeWorkflow(workflowId, {});
+      toast({
+        title: "Workflow Executed",
+        description: `Execution completed with status: ${result.status}`,
+      });
+    } catch (error) {
+      console.error('Error executing workflow:', error);
+      toast({
+        title: "Execution Failed",
+        description: error.message || "Failed to execute workflow",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b">
@@ -167,9 +216,13 @@ export function WorkflowCanvas({ workflowId }: WorkflowCanvasProps) {
             <Save className="w-4 h-4 mr-2" />
             {isLoading ? 'Saving...' : 'Save'}
           </Button>
-          <Button size="sm">
+          <Button 
+            onClick={runWorkflow} 
+            disabled={isExecuting || !workflowId}
+            size="sm"
+          >
             <Play className="w-4 h-4 mr-2" />
-            Run
+            {isExecuting ? 'Running...' : 'Run'}
           </Button>
         </div>
       </div>
