@@ -102,17 +102,38 @@ Response:
 Convert the following user request into a workflow JSON:`;
 
 serve(async (req) => {
+  console.log('NL-to-workflow function called, method:', req.method);
+  
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')!;
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    console.log('Processing workflow conversion request...');
+    const authHeader = req.headers.get('Authorization');
+    console.log('Auth header present:', !!authHeader);
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY') || Deno.env.get('API_OPENAI');
     
+    console.log('Environment check - SUPABASE_URL:', !!supabaseUrl);
+    console.log('Environment check - SERVICE_KEY:', !!supabaseServiceKey);
+    console.log('Environment check - OPENAI_KEY:', !!openAIApiKey);
+    
+    if (!authHeader) {
+      console.log('Missing authorization header');
+      return new Response(JSON.stringify({ 
+        error: 'Authorization header required'
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     if (!openAIApiKey) {
+      console.log('OpenAI API key not found in environment');
       return new Response(JSON.stringify({ 
         error: 'OpenAI API key not configured',
         requiresApiKey: true
@@ -128,15 +149,24 @@ serve(async (req) => {
 
     // Get user from JWT
     const jwt = authHeader.replace('Bearer ', '');
+    console.log('JWT token present:', !!jwt);
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    console.log('User authentication result:', !!user, 'Error:', !!authError);
     
     if (authError || !user) {
+      console.log('Authentication failed:', authError);
       throw new Error('Unauthorized');
     }
 
-    const { message, context = {} } = await req.json();
+    console.log('Parsing request body...');
+    const requestBody = await req.json();
+    console.log('Request body parsed:', requestBody);
+    
+    const { message, context = {} } = requestBody;
     
     if (!message) {
+      console.log('No message provided in request body');
       throw new Error('Message is required');
     }
 
