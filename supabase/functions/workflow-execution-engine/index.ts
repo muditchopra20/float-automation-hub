@@ -6,277 +6,482 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Types matching our workflow DSL
 interface WorkflowNode {
   id: string;
-  type: 'httpRequest' | 'gptPrompt' | 'email' | 'condition' | 'loop' | 'delay' | 'custom';
-  params: Record<string, any>;
-  next: string[];
-  agent?: string;
+  type: string;
+  typeVersion: number;
+  name: string;
+  parameters: Record<string, any>;
+  credentials?: CredentialRef;
+  next?: string;
+}
+
+interface CredentialRef {
+  id: string;
+  name: string;
+  type: string;
 }
 
 interface WorkflowDefinition {
   id: string;
   name: string;
-  nodes: WorkflowNode[];
-  start: string;
+  nodes: Record<string, WorkflowNode>;
+  connections: Record<string, any>;
+  settings?: WorkflowSettings;
+  active: boolean;
+  start?: string;
+}
+
+interface WorkflowSettings {
+  executionOrder?: 'v1' | 'v2';
+  maxRetries?: number;
+  timeout?: number;
+}
+
+interface NodeExecutionData {
+  json: any;
+  binary?: Record<string, any>;
+  metadata?: Record<string, any>;
+}
+
+interface NodeExecutionResult {
+  outputData: NodeExecutionData[][];
+  next?: string | string[];
+  paused?: boolean;
+  error?: string;
+  metadata?: Record<string, any>;
 }
 
 interface ExecutionContext {
+  workflow: WorkflowDefinition;
+  executionId: string;
+  userId: string;
   variables: Record<string, any>;
-  inputData: Record<string, any>;
-  agentMemory: Record<string, any>;
+  nodeOutputs: Record<string, any>;
+  supabase: any;
 }
 
-class WorkflowExecutor {
-  private supabase: any;
-  private executionId: string;
-  private workflowId: string;
-  private context: ExecutionContext;
+// Expression evaluator for {{ variable }} templating
+class ExpressionEvaluator {
+  private context: Record<string, any>;
 
-  constructor(supabase: any, executionId: string, workflowId: string, inputData: Record<string, any> = {}) {
-    this.supabase = supabase;
-    this.executionId = executionId;
-    this.workflowId = workflowId;
-    this.context = {
-      variables: {},
-      inputData,
-      agentMemory: {}
+  constructor(context: Record<string, any> = {}) {
+    this.context = context;
+  }
+
+  evaluate(expression: string): any {
+    if (typeof expression !== 'string') return expression;
+    
+    const templateRegex = /\{\{\s*([^}]+)\s*\}\}/g;
+    return expression.replace(templateRegex, (match, expr) => {
+      try {
+        return this.evaluateExpression(expr.trim());
+      } catch (error) {
+        console.warn(`Failed to evaluate expression: ${expr}`, error);
+        return match;
+      }
+    });
+  }
+
+  evaluateObject(obj: any): any {
+    if (typeof obj === 'string') return this.evaluate(obj);
+    if (Array.isArray(obj)) return obj.map(item => this.evaluateObject(item));
+    if (obj && typeof obj === 'object') {
+      const result: Record<string, any> = {};
+      for (const [key, value] of Object.entries(obj)) {
+        result[key] = this.evaluateObject(value);
+      }
+      return result;
+    }
+    return obj;
+  }
+
+  private evaluateExpression(expr: string): any {
+    if (expr.startsWith('$prev')) {
+      return this.getNestedValue(this.context.$prev, expr.slice(5));
+    }
+    if (expr.startsWith('user.')) {
+      return this.getNestedValue(this.context.user, expr.slice(5));
+    }
+    if (expr.startsWith('workflow.')) {
+      return this.getNestedValue(this.context.workflow, expr.slice(9));
+    }
+    return this.getNestedValue(this.context, expr);
+  }
+
+  private getNestedValue(obj: any, path: string): any {
+    if (!path || path === '') return obj;
+    if (path.startsWith('.')) path = path.slice(1);
+    
+    const parts = path.split('.');
+    let current = obj;
+    
+    for (const part of parts) {
+      if (current == null) return undefined;
+      current = current[part];
+    }
+    
+    return current;
+  }
+}
+
+// Node Handlers
+class NodeHandlerRegistry {
+  private handlers: Map<string, any> = new Map();
+
+  constructor() {
+    this.registerBuiltInHandlers();
+  }
+
+  private registerBuiltInHandlers() {
+    this.handlers.set('trigger.manual', new ManualTriggerHandler());
+    this.handlers.set('trigger.webhook', new WebhookTriggerHandler());
+    this.handlers.set('trigger.schedule', new ScheduleTriggerHandler());
+    this.handlers.set('action.http_request', new HttpRequestHandler());
+    this.handlers.set('action.gpt_prompt', new GptPromptHandler());
+    this.handlers.set('action.email', new EmailHandler());
+    this.handlers.set('condition.if', new ConditionHandler());
+    this.handlers.set('utility.delay', new DelayHandler());
+    this.handlers.set('utility.set_variable', new SetVariableHandler());
+  }
+
+  getHandler(type: string): any {
+    const handler = this.handlers.get(type);
+    if (!handler) throw new Error(`No handler registered for node type: ${type}`);
+    return handler;
+  }
+}
+
+// Base Node Handler
+abstract class BaseNodeHandler {
+  abstract execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult>;
+  
+  protected evaluateParameters(parameters: Record<string, any>, context: ExecutionContext): Record<string, any> {
+    const evaluator = new ExpressionEvaluator({
+      $prev: context.nodeOutputs.$prev,
+      user: { id: context.userId },
+      workflow: context.variables,
+      ...context.variables
+    });
+    
+    return evaluator.evaluateObject(parameters);
+  }
+}
+
+// Trigger Handlers
+class ManualTriggerHandler extends BaseNodeHandler {
+  async execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+    return {
+      outputData: [[{ json: { triggered: true, timestamp: new Date().toISOString() } }]]
     };
   }
+}
 
-  async log(nodeId: string, level: 'debug' | 'info' | 'warn' | 'error', message: string) {
-    await this.supabase
-      .from('execution_logs')
-      .insert({
-        execution_id: this.executionId,
-        node_id: nodeId,
-        level,
-        message
-      });
+class WebhookTriggerHandler extends BaseNodeHandler {
+  async execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+    const params = this.evaluateParameters(node.parameters, context);
+    return {
+      outputData: [[{ json: { webhook: params, data: inputData[0]?.json || {} } }]]
+    };
   }
+}
 
-  async updateExecutionStatus(status: 'pending' | 'running' | 'completed' | 'failed', error?: string, output?: any) {
-    const updates: any = { status };
-    
-    if (status === 'completed' || status === 'failed') {
-      updates.finished_at = new Date().toISOString();
-    }
-    
-    if (error) updates.error = error;
-    if (output) updates.output = output;
-
-    await this.supabase
-      .from('executions')
-      .update(updates)
-      .eq('id', this.executionId);
+class ScheduleTriggerHandler extends BaseNodeHandler {
+  async execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+    const params = this.evaluateParameters(node.parameters, context);
+    return {
+      outputData: [[{ json: { scheduled: true, interval: params.interval, timestamp: new Date().toISOString() } }]]
+    };
   }
+}
 
-  async executeHttpRequest(node: WorkflowNode): Promise<any> {
-    const { method = 'GET', url, headers = {}, body } = node.params;
-    
-    await this.log(node.id, 'info', `Making ${method} request to ${url}`);
+// Action Handlers
+class HttpRequestHandler extends BaseNodeHandler {
+  async execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+    const params = this.evaluateParameters(node.parameters, context);
     
     try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers
-        },
-        body: body ? JSON.stringify(body) : undefined
+      const response = await fetch(params.url, {
+        method: params.method || 'GET',
+        headers: params.headers || {},
+        body: params.body ? JSON.stringify(params.body) : undefined,
       });
       
-      const result = await response.json();
-      await this.log(node.id, 'info', `HTTP request completed with status ${response.status}`);
+      const data = await response.json();
       
-      return result;
+      return {
+        outputData: [[{ 
+          json: data,
+          metadata: { 
+            status: response.status, 
+            headers: Object.fromEntries(response.headers.entries()) 
+          }
+        }]]
+      };
     } catch (error) {
-      await this.log(node.id, 'error', `HTTP request failed: ${error.message}`);
-      throw error;
+      throw new Error(`HTTP Request failed: ${error.message}`);
     }
   }
+}
 
-  async executeGptPrompt(node: WorkflowNode): Promise<any> {
-    const { promptTemplate, model = 'gpt-4o-mini', temperature = 0.7, memoryKeys = [] } = node.params;
+class GptPromptHandler extends BaseNodeHandler {
+  async execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+    const params = this.evaluateParameters(node.parameters, context);
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     
-    await this.log(node.id, 'info', `Executing GPT prompt with model ${model}`);
-    
-    // Get OpenAI API key from credentials
-    const { data: credentials } = await this.supabase
-      .from('credentials')
-      .select('encrypted_value')
-      .eq('type', 'openai')
-      .single();
-    
-    if (!credentials) {
-      throw new Error('OpenAI credentials not found');
-    }
-    
-    // Replace variables in prompt template
-    let prompt = promptTemplate;
-    for (const [key, value] of Object.entries(this.context.variables)) {
-      prompt = prompt.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured');
     }
     
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${credentials.encrypted_value}`,
+          'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model,
+          model: params.model || 'gpt-4o-mini',
           messages: [
-            { role: 'user', content: prompt }
+            { role: 'user', content: params.prompt }
           ],
-          temperature
+          temperature: params.temperature || 0.7,
         }),
       });
       
-      const result = await response.json();
-      await this.log(node.id, 'info', 'GPT prompt completed successfully');
+      const data = await response.json();
+      const result = data.choices[0].message.content;
       
-      return result.choices[0].message.content;
+      return {
+        outputData: [[{ json: { result, usage: data.usage } }]]
+      };
     } catch (error) {
-      await this.log(node.id, 'error', `GPT prompt failed: ${error.message}`);
-      throw error;
+      throw new Error(`GPT Prompt failed: ${error.message}`);
     }
   }
+}
 
-  async executeEmail(node: WorkflowNode): Promise<any> {
-    const { to, subject, bodyTemplate } = node.params;
+class EmailHandler extends BaseNodeHandler {
+  async execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+    const params = this.evaluateParameters(node.parameters, context);
     
-    await this.log(node.id, 'info', `Sending email to ${to}`);
+    // For now, just simulate email sending - in production you'd integrate with email service
+    console.log(`Sending email to ${params.to}: ${params.subject}`);
     
-    // Replace variables in email template
-    let body = bodyTemplate;
-    for (const [key, value] of Object.entries(this.context.variables)) {
-      body = body.replace(new RegExp(`{{${key}}}`, 'g'), value);
-    }
-    
-    // Here you would integrate with your email service (SMTP credentials)
-    await this.log(node.id, 'info', 'Email sent successfully');
-    
-    return { sent: true, to, subject };
+    return {
+      outputData: [[{ 
+        json: { 
+          sent: true,
+          to: params.to,
+          subject: params.subject,
+          timestamp: new Date().toISOString()
+        }
+      }]]
+    };
   }
+}
 
-  async executeCondition(node: WorkflowNode): Promise<string[]> {
-    const { expression } = node.params;
+// Condition Handlers
+class ConditionHandler extends BaseNodeHandler {
+  async execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+    const params = this.evaluateParameters(node.parameters, context);
     
-    await this.log(node.id, 'info', `Evaluating condition: ${expression}`);
+    // Simple condition evaluation - in production you'd want a proper expression parser
+    const condition = params.condition;
+    const result = this.evaluateCondition(condition, context);
     
-    // Simple expression evaluation (you might want to use a more robust evaluator)
-    try {
-      // Replace variables in expression
-      let evalExpression = expression;
-      for (const [key, value] of Object.entries(this.context.variables)) {
-        evalExpression = evalExpression.replace(new RegExp(`{{${key}}}`, 'g'), JSON.stringify(value));
-      }
-      
-      const result = eval(evalExpression);
-      await this.log(node.id, 'info', `Condition evaluated to: ${result}`);
-      
-      // Return appropriate next nodes based on condition
-      if (result) {
-        return node.next.slice(0, 1); // First next node for true
-      } else {
-        return node.next.slice(1); // Remaining next nodes for false
-      }
-    } catch (error) {
-      await this.log(node.id, 'error', `Condition evaluation failed: ${error.message}`);
-      throw error;
-    }
+    return {
+      outputData: [[{ json: { condition, result } }]],
+      next: result ? params.trueBranch : params.falseBranch
+    };
   }
+  
+  private evaluateCondition(condition: string, context: ExecutionContext): boolean {
+    // Simple condition evaluation - extend as needed
+    if (condition.includes('===')) {
+      const [left, right] = condition.split('===').map(s => s.trim());
+      return left === right;
+    }
+    if (condition.includes('!==')) {
+      const [left, right] = condition.split('!==').map(s => s.trim());
+      return left !== right;
+    }
+    return Boolean(condition);
+  }
+}
 
-  async executeDelay(node: WorkflowNode): Promise<any> {
-    const { duration } = node.params; // duration in milliseconds
-    
-    await this.log(node.id, 'info', `Delaying execution for ${duration}ms`);
+// Utility Handlers
+class DelayHandler extends BaseNodeHandler {
+  async execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+    const params = this.evaluateParameters(node.parameters, context);
+    const duration = params.duration || 1000;
     
     await new Promise(resolve => setTimeout(resolve, duration));
     
-    await this.log(node.id, 'info', 'Delay completed');
-    return { delayed: duration };
+    return {
+      outputData: [[{ json: { delayed: duration, timestamp: new Date().toISOString() } }]]
+    };
+  }
+}
+
+class SetVariableHandler extends BaseNodeHandler {
+  async execute(inputData: NodeExecutionData[], node: WorkflowNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+    const params = this.evaluateParameters(node.parameters, context);
+    
+    context.variables[params.name] = params.value;
+    
+    return {
+      outputData: [[{ json: { variableSet: params.name, value: params.value } }]]
+    };
+  }
+}
+
+// Main Workflow Executor
+class WorkflowExecutor {
+  private supabase: any;
+  private executionId: string;
+  private workflowId: string;
+  private userId: string;
+  private inputData: Record<string, any>;
+  private nodeRegistry: NodeHandlerRegistry;
+
+  constructor(supabase: any, executionId: string, workflowId: string, userId: string, inputData: Record<string, any> = {}) {
+    this.supabase = supabase;
+    this.executionId = executionId;
+    this.workflowId = workflowId;
+    this.userId = userId;
+    this.inputData = inputData;
+    this.nodeRegistry = new NodeHandlerRegistry();
   }
 
-  async executeNode(node: WorkflowNode): Promise<any> {
-    await this.log(node.id, 'info', `Executing node of type: ${node.type}`);
+  async log(nodeId: string, level: 'debug' | 'info' | 'warn' | 'error', message: string) {
+    try {
+      await this.supabase.from('execution_logs').insert({
+        execution_id: this.executionId,
+        node_id: nodeId,
+        level,
+        message,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Failed to log execution:', error);
+    }
+  }
+
+  async updateExecutionStatus(status: 'pending' | 'running' | 'completed' | 'failed', error?: string, output?: any) {
+    const updateData: any = { 
+      status,
+      cursor: null // Reset cursor when completing or failing
+    };
     
-    let result: any;
-    
-    switch (node.type) {
-      case 'httpRequest':
-        result = await this.executeHttpRequest(node);
-        break;
-      case 'gptPrompt':
-        result = await this.executeGptPrompt(node);
-        break;
-      case 'email':
-        result = await this.executeEmail(node);
-        break;
-      case 'condition':
-        return await this.executeCondition(node); // Returns next node IDs
-      case 'delay':
-        result = await this.executeDelay(node);
-        break;
-      default:
-        throw new Error(`Unknown node type: ${node.type}`);
+    if (status === 'completed') {
+      updateData.finished_at = new Date().toISOString();
+      updateData.output = output || {};
     }
     
-    // Store result in context variables
-    this.context.variables[`${node.id}_result`] = result;
+    if (status === 'failed') {
+      updateData.finished_at = new Date().toISOString();
+      updateData.error = error;
+    }
+
+    await this.supabase.from('executions').update(updateData).eq('id', this.executionId);
     
-    return node.next; // Return next node IDs
+    // Publish real-time update
+    try {
+      await this.supabase.channel(`execution:${this.executionId}`).send({
+        type: 'broadcast',
+        event: 'execution_update',
+        payload: { executionId: this.executionId, status, error, output }
+      });
+    } catch (error) {
+      console.warn('Failed to publish real-time update:', error);
+    }
   }
 
   async execute(workflow: WorkflowDefinition): Promise<void> {
+    await this.log('system', 'info', `Starting workflow execution: ${workflow.name}`);
     await this.updateExecutionStatus('running');
-    await this.log('workflow', 'info', `Starting workflow execution: ${workflow.name}`);
-    
+
+    const context: ExecutionContext = {
+      workflow,
+      executionId: this.executionId,
+      userId: this.userId,
+      variables: { ...this.inputData },
+      nodeOutputs: {},
+      supabase: this.supabase
+    };
+
     try {
-      const nodesToExecute = [workflow.start];
-      const executedNodes = new Set<string>();
-      
-      while (nodesToExecute.length > 0) {
-        const currentNodeId = nodesToExecute.shift()!;
-        
-        if (executedNodes.has(currentNodeId)) {
-          continue; // Avoid infinite loops
-        }
-        
-        const node = workflow.nodes.find(n => n.id === currentNodeId);
+      let currentNodeId = workflow.start;
+      if (!currentNodeId) {
+        throw new Error('No start node defined in workflow');
+      }
+
+      while (currentNodeId) {
+        const node = workflow.nodes[currentNodeId];
         if (!node) {
           throw new Error(`Node not found: ${currentNodeId}`);
         }
+
+        await this.log(node.id, 'info', `Executing node: ${node.name}`);
         
-        executedNodes.add(currentNodeId);
+        // Update cursor for pause/resume functionality
+        await this.supabase.from('executions').update({ 
+          cursor: node.id,
+          context: context.variables 
+        }).eq('id', this.executionId);
+
+        const handler = this.nodeRegistry.getHandler(node.type);
+        const inputData: NodeExecutionData[] = [{ json: context.nodeOutputs.$prev || {} }];
         
-        const nextNodes = await this.executeNode(node);
+        const result = await handler.execute(inputData, node, context);
         
-        if (Array.isArray(nextNodes)) {
-          nodesToExecute.push(...nextNodes);
+        // Store node output for next nodes
+        context.nodeOutputs[node.id] = result.outputData[0]?.[0]?.json;
+        context.nodeOutputs.$prev = result.outputData[0]?.[0]?.json;
+
+        await this.log(node.id, 'info', `Node completed: ${node.name}`);
+
+        // Determine next node
+        if (result.next) {
+          currentNodeId = Array.isArray(result.next) ? result.next[0] : result.next;
+        } else if (node.next) {
+          currentNodeId = node.next;
+        } else {
+          currentNodeId = null; // End of workflow
+        }
+
+        if (result.paused) {
+          await this.log(node.id, 'info', 'Workflow paused for user input');
+          await this.updateExecutionStatus('paused');
+          return;
         }
       }
-      
-      await this.log('workflow', 'info', 'Workflow execution completed successfully');
-      await this.updateExecutionStatus('completed', undefined, this.context.variables);
-      
+
+      await this.log('system', 'info', 'Workflow execution completed successfully');
+      await this.updateExecutionStatus('completed', undefined, context.nodeOutputs);
+
     } catch (error) {
-      await this.log('workflow', 'error', `Workflow execution failed: ${error.message}`);
+      await this.log('system', 'error', `Workflow execution failed: ${error.message}`);
       await this.updateExecutionStatus('failed', error.message);
       throw error;
     }
   }
 }
 
+// HTTP handler
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Authorization header required');
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
@@ -315,7 +520,8 @@ serve(async (req) => {
       .from('executions')
       .insert({
         workflow_id: workflowId,
-        status: 'pending'
+        status: 'pending',
+        started_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -332,7 +538,7 @@ serve(async (req) => {
     }
 
     // Execute workflow
-    const executor = new WorkflowExecutor(supabase, execution.id, workflowId, inputData);
+    const executor = new WorkflowExecutor(supabase, execution.id, workflowId, user.id, inputData);
     await executor.execute(workflowDefinition);
 
     return new Response(JSON.stringify({
