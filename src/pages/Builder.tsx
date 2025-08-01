@@ -38,6 +38,17 @@ const Builder = () => {
   const { workflows, createWorkflow } = useWorkflows();
   const { toast } = useToast();
 
+  const isGreetingOrCasual = (message: string) => {
+    const casualPatterns = /^(hi|hello|hey|sup|yo|good morning|good afternoon|good evening|how are you|what's up|whats up)$/i;
+    const helpPatterns = /^(help|what can you do|how does this work|what is this)$/i;
+    return casualPatterns.test(message.trim()) || helpPatterns.test(message.trim());
+  };
+
+  const isWorkflowRequest = (message: string) => {
+    const workflowKeywords = /\b(automate|workflow|when|if|send|create|update|delete|trigger|schedule|email|notification|slack|webhook|api|integrate)\b/i;
+    return workflowKeywords.test(message) && message.length > 10; // Avoid short casual messages
+  };
+
   const analyzeWorkflowRequirements = (message: string) => {
     const requirements = {
       needsCredentials: /\b(api|key|token|auth|login|password)\b/i.test(message),
@@ -69,6 +80,24 @@ const Builder = () => {
     return { requirements, missing };
   };
 
+  const getConversationalResponse = (message: string) => {
+    const lowerMessage = message.toLowerCase().trim();
+    
+    if (lowerMessage === 'hi' || lowerMessage === 'hello' || lowerMessage === 'hey') {
+      return "Hi there! 👋 I'm here to help you automate repetitive tasks and create powerful workflows. What kind of work are you trying to make easier or more efficient?";
+    }
+    
+    if (lowerMessage.includes('help') || lowerMessage.includes('what can you do')) {
+      return "I can help you create automated workflows to save time and reduce manual work! Here are some things I can automate for you:\n\n• Email notifications when events happen\n• Data sync between different apps\n• Scheduled tasks and reminders\n• Form submissions and responses\n• Social media posting\n• File processing and organization\n\nWhat specific task would you like to automate?";
+    }
+    
+    if (lowerMessage.includes('how') && lowerMessage.includes('work')) {
+      return "I work by having a conversation with you about what you want to automate. Just describe your workflow in plain English, like:\n\n• \"Send me an email when someone fills out my contact form\"\n• \"Post to Slack when a new order comes in\"\n• \"Update my spreadsheet when I get new leads\"\n\nI'll ask follow-up questions to understand exactly what you need, then create the automation for you. What would you like to automate?";
+    }
+
+    return "I'm here to help you automate tasks and create workflows! What specific process or task would you like to make easier? Just describe it in your own words.";
+  };
+
   const handleSendMessage = async (message: string) => {
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -81,6 +110,34 @@ const Builder = () => {
     setIsLoading(true);
 
     try {
+      // Handle casual greetings and help requests conversationally
+      if (isGreetingOrCasual(message)) {
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: getConversationalResponse(message),
+          timestamp: new Date(),
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Only proceed with workflow creation if it's actually a workflow request
+      if (!isWorkflowRequest(message)) {
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "I'd love to help you create an automation! Could you describe what specific task or process you'd like to automate? For example, you might want to send notifications, sync data between apps, or schedule regular tasks.",
+          timestamp: new Date(),
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsLoading(false);
+        return;
+      }
+
       // Update workflow context with user input
       setWorkflowContext(prev => ({ ...prev, lastMessage: message }));
 
