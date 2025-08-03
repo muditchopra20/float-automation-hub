@@ -4,7 +4,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { BuilderSidebar } from "@/components/builder/builder-sidebar";
 import { ChatInput } from "@/components/builder/chat-input";
 import { ChatMessage } from "@/components/builder/chat-message";
-import { useN8nIntegration } from "@/hooks/use-n8n-integration";
+import { useMCPN8n } from "@/hooks/use-mcp-n8n";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Play, Menu, X } from "lucide-react";
@@ -35,12 +35,12 @@ const Builder = () => {
   const [workflows, setWorkflows] = useState([]);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>();
   const { 
-    convertMessageToN8nWorkflow, 
+    convertMessageToWorkflow, 
     executeWorkflow, 
     getWorkflows,
     activateWorkflow,
-    loading: n8nLoading 
-  } = useN8nIntegration();
+    loading: mcpLoading 
+  } = useMCPN8n();
   const { toast } = useToast();
 
   const isGreetingOrCasual = (message: string) => {
@@ -172,7 +172,7 @@ const Builder = () => {
           // 4. Workflow Generation Phase - Convert to n8n workflow
           setTimeout(async () => {
             try {
-              const result = await convertMessageToN8nWorkflow(workflowContext.lastMessage || message, {
+              const result = await convertMessageToWorkflow(workflowContext.lastMessage || message, {
                 tools: conversationState.tools,
                 workflowContext
               });
@@ -400,19 +400,10 @@ const Builder = () => {
                     <MessageSquare className="w-10 h-10 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold mb-2">Hey! I'm Flo 👋</h3>
+                    <h3 className="text-xl font-semibold mb-2">Hey! I'm Flo</h3>
                     <p className="text-muted-foreground mb-6">
-                      Your AI workflow assistant. Just tell me what you want to automate, and I'll build it for you inside your connected tools.
+                      Tell me what you want to automate, and I'll build it for you.
                     </p>
-                  </div>
-                  <div className="text-left space-y-3 bg-muted/50 rounded-lg p-6">
-                    <p className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Try examples like:</p>
-                    <div className="space-y-2">
-                      <p className="text-sm">"When someone submits a Typeform, add their data to Notion and alert my team on Slack"</p>
-                      <p className="text-sm">"Send me a Gmail notification when I get a new lead in HubSpot"</p>
-                      <p className="text-sm">"Create a Google Sheets row every time someone books a Calendly meeting"</p>
-                      <p className="text-sm">"Post to Discord when there's a new order in my e-commerce store"</p>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -427,7 +418,7 @@ const Builder = () => {
                 />
               ))}
               
-              {(isLoading || n8nLoading) && (
+              {(isLoading || mcpLoading) && (
                 <div className="flex justify-start">
                   <div className="bg-muted rounded-lg px-4 py-3 max-w-xs">
                     <div className="flex items-center space-x-2">
