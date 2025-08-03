@@ -4,7 +4,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { BuilderSidebar } from "@/components/builder/builder-sidebar";
 import { ChatInput } from "@/components/builder/chat-input";
 import { ChatMessage } from "@/components/builder/chat-message";
-import { useMCPN8n } from "@/hooks/use-mcp-n8n";
+import { useN8nIntegration } from "@/hooks/use-n8n-integration";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Play, Menu, X } from "lucide-react";
@@ -31,28 +31,27 @@ const Builder = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentMessage, setCurrentMessage] = useState('');
   const [workflowContext, setWorkflowContext] = useState<any>({});
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [workflows, setWorkflows] = useState([]);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>();
   const { 
-    convertMessageToWorkflow, 
+    convertMessageToN8nWorkflow, 
     executeWorkflow, 
     getWorkflows,
     activateWorkflow,
-    loading: mcpLoading 
-  } = useMCPN8n();
+    loading: n8nLoading 
+  } = useN8nIntegration();
   const { toast } = useToast();
 
-  const isGreetingOrCasual = (message: string) => {
-    const casualPatterns = /^(hi|hello|hey|sup|yo|good morning|good afternoon|good evening|how are you|what's up|whats up)$/i;
-    const helpPatterns = /^(help|what can you do|how does this work|what is this)$/i;
-    return casualPatterns.test(message.trim()) || helpPatterns.test(message.trim());
-  };
-
-  const isWorkflowRequest = (message: string) => {
-    const workflowKeywords = /\b(automate|workflow|when|if|send|create|update|delete|trigger|schedule|email|notification|slack|webhook|api|integrate)\b/i;
-    return workflowKeywords.test(message) && message.length > 10; // Avoid short casual messages
-  };
+  const [conversationState, setConversationState] = useState<{
+    phase: 'greeting' | 'understanding' | 'tools_check' | 'building' | 'preview' | 'complete';
+    tools: string[];
+    toolsConfirmed: boolean;
+  }>({
+    phase: 'greeting',
+    tools: [],
+    toolsConfirmed: false
+  });
 
   const extractToolsFromMessage = (message: string) => {
     const tools = [];
@@ -74,21 +73,116 @@ const Builder = () => {
     return tools;
   };
 
-  const [conversationState, setConversationState] = useState<{
-    phase: 'greeting' | 'understanding' | 'tools_check' | 'building' | 'preview' | 'complete';
-    tools: string[];
-    toolsConfirmed: boolean;
-  }>({
-    phase: 'greeting',
-    tools: [],
-    toolsConfirmed: false
-  });
+  const isGreetingOrCasual = (message: string) => {
+    const casualPatterns = /^(hi|hello|hey|sup|yo|good morning|good afternoon|good evening|how are you|what's up|whats up)$/i;
+    const helpPatterns = /^(help|what can you do|how does this work|what is this)$/i;
+    return casualPatterns.test(message.trim()) || helpPatterns.test(message.trim());
+  };
+
+  const isBusinessConsultingRequest = (message: string) => {
+    const consultingKeywords = /\b(suggest|recommendation|advice|help me|what should|ideas|business|ecommerce|consultant|strategies)\b/i;
+    const businessKeywords = /\b(business|ecommerce|e-commerce|shop|store|company|startup|saas|agency|marketing|sales|customer|client)\b/i;
+    return consultingKeywords.test(message) && (businessKeywords.test(message) || message.includes('what to automate'));
+  };
+
+  const isWorkflowRequest = (message: string) => {
+    const workflowKeywords = /\b(automate|workflow|when|if|send|create|update|delete|trigger|schedule|email|notification|slack|webhook|api|integrate)\b/i;
+    return workflowKeywords.test(message) && message.length > 10; // Avoid short casual messages
+  };
+
+  const getBusinessConsultingResponse = (message: string) => {
+    const lowerMessage = message.toLowerCase();
+    
+    if (lowerMessage.includes('ecommerce') || lowerMessage.includes('e-commerce') || lowerMessage.includes('store') || lowerMessage.includes('shop')) {
+      return `As an ecommerce business, you have fantastic automation opportunities! Here are my top recommendations:
+
+**Customer Experience:**
+• When someone abandons their cart → Send automated recovery emails with Mailchimp
+• When a new order comes in → Notify your team on Slack and create a shipment in your fulfillment system
+• When a customer leaves a review → Add them to a VIP customer list in your CRM
+
+**Operations:**
+• When inventory runs low → Create purchase orders in your supplier system
+• When a refund is processed → Update inventory and notify accounting in Google Sheets
+• Daily sales reports → Automatically compile and send to your team
+
+**Marketing:**
+• New customers → Add to welcome email sequence and segment in Klaviyo
+• High-value customers → Add to special promotions list
+• Product page views → Retarget on Facebook/Google Ads
+
+Which area interests you most? I can help you build any of these workflows!`;
+    }
+    
+    if (lowerMessage.includes('saas') || lowerMessage.includes('software') || lowerMessage.includes('app')) {
+      return `For SaaS businesses, automation is crucial for scaling! Here are my top recommendations:
+
+**Customer Onboarding:**
+• New signups → Send welcome sequence, create user in systems, notify sales team
+• Trial users → Send educational emails, track engagement, alert sales for high-value prospects
+• Churned users → Send exit surveys, add to win-back campaigns
+
+**Customer Success:**
+• Usage drops → Alert customer success team, trigger engagement campaigns
+• Feature requests → Log in Notion, notify product team on Slack
+• Support tickets → Auto-assign based on priority and expertise
+
+**Sales & Marketing:**
+• Demo requests → Create leads in CRM, schedule follow-ups, notify sales
+• Webinar signups → Add to email sequences, send calendar invites
+• Product qualified leads → Score and route to appropriate sales rep
+
+**Operations:**
+• New customers → Provision accounts, update billing systems, create onboarding tasks
+• Failed payments → Send dunning emails, alert finance team
+
+What type of SaaS workflow would help you most?`;
+    }
+    
+    if (lowerMessage.includes('agency') || lowerMessage.includes('marketing') || lowerMessage.includes('client')) {
+      return `Agencies can save hours daily with smart automation! Here are my top suggestions:
+
+**Client Management:**
+• New client onboarding → Create project in Asana, set up Slack channels, send welcome packet
+• Project milestones → Auto-notify clients, request feedback, update invoicing
+• Client feedback → Log in CRM, create follow-up tasks, route to team leads
+
+**Reporting & Analytics:**
+• Weekly client reports → Pull data from Google Analytics, Facebook Ads, compile in branded reports
+• Campaign performance alerts → Notify team when metrics hit thresholds
+• Monthly billing → Generate invoices based on project hours, send to clients
+
+**Lead Generation:**
+• Contact form submissions → Qualify leads, add to CRM, schedule discovery calls
+• Proposal requests → Create templated proposals, track in pipeline
+• Website visitors → Retarget on social, add to nurture sequences
+
+**Team Management:**
+• Project updates → Sync between tools, notify stakeholders
+• Time tracking → Compile timesheets, update project budgets
+• Resource planning → Alert when team capacity is reaching limits
+
+Which agency workflow would impact your business most?`;
+    }
+    
+    return `I'd love to help you identify automation opportunities! As a business workflow consultant, I can suggest automations based on your industry and pain points.
+
+**Common high-impact automations:**
+• Lead management and nurturing
+• Customer onboarding sequences  
+• Sales and marketing coordination
+• Inventory and order management
+• Team notifications and reporting
+• Data syncing between systems
+
+Tell me more about your business - what industry are you in, and what repetitive tasks are eating up your team's time? I'll give you specific automation recommendations that could save hours each week!`;
+  };
 
   const getConversationalResponse = (message: string) => {
     const lowerMessage = message.toLowerCase().trim();
     
     if (lowerMessage === 'hi' || lowerMessage === 'hello' || lowerMessage === 'hey') {
-      return "Hey! I'm Flo 👋 — your AI workflow assistant. Just tell me what you want to automate, and I'll build it for you inside your connected tools.";
+      return "Hey! I'm Flo — your AI workflow assistant. Just tell me what you want to automate, and I'll build it for you inside your connected tools.";
     }
     
     if (lowerMessage.includes('help') || lowerMessage.includes('what can you do')) {
@@ -128,7 +222,21 @@ const Builder = () => {
         return;
       }
 
-      // 2. Intent Understanding
+      // 2. Business Consulting 
+      if (isBusinessConsultingRequest(message)) {
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: getBusinessConsultingResponse(message),
+          timestamp: new Date(),
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Intent Understanding
       if (isWorkflowRequest(message)) {
         const tools = extractToolsFromMessage(message);
         
@@ -172,7 +280,7 @@ const Builder = () => {
           // 4. Workflow Generation Phase - Convert to n8n workflow
           setTimeout(async () => {
             try {
-              const result = await convertMessageToWorkflow(workflowContext.lastMessage || message, {
+              const result = await convertMessageToN8nWorkflow(workflowContext.lastMessage || message, {
                 tools: conversationState.tools,
                 workflowContext
               });
@@ -331,9 +439,9 @@ const Builder = () => {
       <main className="flex-1 flex pt-16">
         {/* Sidebar */}
         <div className={`
-          ${sidebarOpen ? 'block' : 'hidden'} 
-          md:block transition-all duration-300 ease-in-out
-          ${sidebarOpen ? 'w-80' : 'w-0 md:w-80'}
+          transition-all duration-300 ease-in-out
+          ${sidebarOpen ? 'w-80' : 'w-0'}
+          ${sidebarOpen ? 'block' : 'hidden'}
         `}>
           <BuilderSidebar onAgentSelect={handleAgentSelect} />
         </div>
@@ -348,7 +456,6 @@ const Builder = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="md:hidden"
                 >
                   {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                 </Button>
@@ -418,7 +525,7 @@ const Builder = () => {
                 />
               ))}
               
-              {(isLoading || mcpLoading) && (
+              {(isLoading || n8nLoading) && (
                 <div className="flex justify-start">
                   <div className="bg-muted rounded-lg px-4 py-3 max-w-xs">
                     <div className="flex items-center space-x-2">
