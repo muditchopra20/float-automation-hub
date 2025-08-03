@@ -4,14 +4,10 @@ import { Navbar } from "@/components/layout/navbar";
 import { BuilderSidebar } from "@/components/builder/builder-sidebar";
 import { ChatInput } from "@/components/builder/chat-input";
 import { ChatMessage } from "@/components/builder/chat-message";
-import { VisualWorkflowBuilder } from "@/components/workflow-builder/VisualWorkflowBuilder";
-import { useWorkflowConversion } from "@/hooks/use-workflow-conversion";
-import { useWorkflowExecutor } from "@/hooks/use-workflow-executor";
+import { useN8nIntegration } from "@/hooks/use-n8n-integration";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Settings, Play } from "lucide-react";
-import { useWorkflows } from "@/hooks/use-workflows";
+import { MessageSquare, Play, Menu, X } from "lucide-react";
 
 interface ChatMessage {
   id: string;
@@ -35,11 +31,16 @@ const Builder = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentMessage, setCurrentMessage] = useState('');
   const [workflowContext, setWorkflowContext] = useState<any>({});
-  const [activeTab, setActiveTab] = useState('chat');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [workflows, setWorkflows] = useState([]);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>();
-  const { convertMessageToWorkflow, converting } = useWorkflowConversion();
-  const { executeWorkflow } = useWorkflowExecutor();
-  const { workflows, createWorkflow, updateWorkflow } = useWorkflows();
+  const { 
+    convertMessageToN8nWorkflow, 
+    executeWorkflow, 
+    getWorkflows,
+    activateWorkflow,
+    loading: n8nLoading 
+  } = useN8nIntegration();
   const { toast } = useToast();
 
   const isGreetingOrCasual = (message: string) => {
@@ -162,8 +163,8 @@ const Builder = () => {
 
         setMessages(prev => [...prev, assistantMessage]);
       } else {
-        // Convert natural language to workflow when we have enough info
-        const result = await convertMessageToWorkflow(message, {
+        // Convert natural language to n8n workflow when we have enough info
+        const result = await convertMessageToN8nWorkflow(message, {
           agentMentions: message.match(/@[\w_]+/g) || [],
           workflowContext
         });
@@ -171,40 +172,47 @@ const Builder = () => {
         const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: result.message,
+          content: `✅ **Workflow Created Successfully!**\n\n**${result.workflow.name}**\n\n${result.summary}\n\nYour workflow has been created in n8n and is ready to use. You can activate it to start automating or test it first.`,
           timestamp: new Date(),
-          workflowId: result.workflowId,
+          workflowId: result.workflow.id,
           actions: [
-            {
-              type: 'edit',
-              label: 'Edit Visually',
-              workflowId: result.workflowId
-            },
             {
               type: 'activate',
               label: 'Activate Workflow',
-              workflowId: result.workflowId
+              workflowId: result.workflow.id
             },
             {
               type: 'execute',
               label: 'Test Run',
-              workflowId: result.workflowId
+              workflowId: result.workflow.id
             }
           ]
         };
 
         setMessages(prev => [...prev, assistantMessage]);
         setWorkflowContext({}); // Reset context after successful creation
+        
+        // Refresh workflows list
+        const updatedWorkflows = await getWorkflows();
+        setWorkflows(updatedWorkflows);
       }
     } catch (error) {
       console.error('Workflow conversion error:', error);
       
+      let errorContent = "Sorry, I couldn't create a workflow from that request.";
+      
+      if (error.message.includes('N8N_API_KEY') || error.message.includes('N8N_INSTANCE_URL')) {
+        errorContent = "I need your n8n configuration to create workflows. Please add your n8n API key and instance URL.";
+      } else if (error.message.includes('OpenAI API key')) {
+        errorContent = "I need your OpenAI API key to create workflows. Please add it to your credentials first.";
+      } else {
+        errorContent = `Sorry, I couldn't create a workflow from that request. Error: ${error.message}`;
+      }
+      
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: error.message.includes('OpenAI API key') 
-          ? "I need your OpenAI API key to create workflows. Please add it to your credentials first."
-          : `Sorry, I couldn't create a workflow from that request. Error: ${error.message}`,
+        content: errorContent,
         timestamp: new Date(),
       };
 
@@ -218,23 +226,12 @@ const Builder = () => {
     try {
       if (action === 'execute') {
         await executeWorkflow(workflowId, {});
-        toast({
-          title: "Workflow Executed",
-          description: "Your workflow has been started successfully!",
-        });
       } else if (action === 'activate') {
-        // Update workflow to active status
-        toast({
-          title: "Workflow Activated",
-          description: "Your workflow is now active and ready to run!",
-        });
+        await activateWorkflow(workflowId);
       }
     } catch (error) {
-      toast({
-        title: "Action Failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Error handling is done in the hook
+      console.error('Workflow action error:', error);
     }
   };
 
@@ -252,117 +249,124 @@ const Builder = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 flex flex-col md:flex-row pt-16">
-        <div className="hidden md:block">
+      <main className="flex-1 flex pt-16">
+        {/* Sidebar */}
+        <div className={`
+          ${sidebarOpen ? 'block' : 'hidden'} 
+          md:block transition-all duration-300 ease-in-out
+          ${sidebarOpen ? 'w-80' : 'w-0 md:w-80'}
+        `}>
           <BuilderSidebar onAgentSelect={handleAgentSelect} />
         </div>
-        <div className="flex-1 bg-background flex flex-col">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            {/* Header with tabs */}
-            <div className="border-b border-border bg-card">
-              <div className="flex items-center justify-between p-4">
+        
+        {/* Main Chat Area */}
+        <div className="flex-1 bg-background flex flex-col relative">
+          {/* Header */}
+          <div className="border-b border-border bg-card">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="md:hidden"
+                >
+                  {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                </Button>
                 <div>
-                  <h2 className="text-lg font-semibold">
-                    {activeTab === 'chat' ? 'Chat with Flo' : 'Visual Workflow Builder'}
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    Chat with Flo
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    {activeTab === 'chat' 
-                      ? 'Describe what you want to automate - I\'ll guide you through the setup'
-                      : 'Design workflows visually with drag-and-drop nodes'
-                    }
+                    Describe what you want to automate - I'll build it with n8n
                   </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  {workflows.length > 0 && (
-                    <select 
-                      value={selectedWorkflowId || ''} 
-                      onChange={(e) => setSelectedWorkflowId(e.target.value)}
-                      className="px-3 py-1 text-sm border border-border rounded-md bg-background"
-                    >
-                      <option value="">Select workflow...</option>
-                      {workflows.map(workflow => (
-                        <option key={workflow.id} value={workflow.id}>
-                          {workflow.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => selectedWorkflowId && executeWorkflow(selectedWorkflowId, {})}
-                    disabled={!selectedWorkflowId}
-                  >
-                    <Play className="w-4 h-4 mr-1" />
-                    Run
-                  </Button>
                 </div>
               </div>
               
-              <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-4">
-                <TabsTrigger value="chat" className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Chat Builder
-                </TabsTrigger>
-                <TabsTrigger value="visual" className="flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  Visual Builder
-                </TabsTrigger>
-              </TabsList>
+              <div className="flex items-center gap-3">
+                {workflows.length > 0 && (
+                  <select 
+                    value={selectedWorkflowId || ''} 
+                    onChange={(e) => setSelectedWorkflowId(e.target.value)}
+                    className="px-3 py-2 text-sm border border-border rounded-md bg-background"
+                  >
+                    <option value="">Select workflow...</option>
+                    {workflows.map(workflow => (
+                      <option key={workflow.id} value={workflow.id}>
+                        {workflow.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => selectedWorkflowId && executeWorkflow(selectedWorkflowId, {})}
+                  disabled={!selectedWorkflowId}
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  Run
+                </Button>
+              </div>
             </div>
-            
-            {/* Tab Contents */}
-            <TabsContent value="chat" className="flex-1 flex flex-col m-0">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.length === 0 && (
-                  <div className="text-center text-muted-foreground mt-8">
-                    <div className="space-y-4">
-                      <p className="text-lg">Start building your automation workflow!</p>
-                      <div className="text-sm space-y-2">
-                        <p>Try saying things like:</p>
-                        <div className="space-y-1 text-left max-w-md mx-auto">
-                          <p>• "Send me an email when someone fills out my contact form"</p>
-                          <p>• "Create a Slack notification when a new user signs up"</p>
-                          <p>• "Update a spreadsheet every time I get a new order"</p>
-                        </div>
-                      </div>
+          </div>
+          
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {messages.length === 0 && (
+              <div className="max-w-2xl mx-auto text-center mt-16">
+                <div className="space-y-6">
+                  <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                    <MessageSquare className="w-10 h-10 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Welcome to Flo AI</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Your smart workflow assistant powered by n8n. Just describe what you want to automate!
+                    </p>
+                  </div>
+                  <div className="text-left space-y-3 bg-muted/50 rounded-lg p-6">
+                    <p className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Try examples like:</p>
+                    <div className="space-y-2">
+                      <p className="text-sm">💧 "Send me an email when someone fills out my contact form"</p>
+                      <p className="text-sm">💬 "Create a Slack notification when a new user signs up"</p>
+                      <p className="text-sm">📊 "Update a spreadsheet every time I get a new order"</p>
+                      <p className="text-sm">🔄 "Sync new leads from my website to my CRM"</p>
                     </div>
                   </div>
-                )}
-                
-                {messages.map((msg) => (
-                  <ChatMessage 
-                    key={msg.id} 
-                    message={msg} 
-                    onAction={(action, workflowId) => {
-                      handleWorkflowAction(action, workflowId);
-                      if (action === 'edit') {
-                        setSelectedWorkflowId(workflowId);
-                        setActiveTab('visual');
-                      }
-                    }}
-                  />
-                ))}
-                
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-muted rounded-lg px-4 py-2 max-w-xs">
+                </div>
+              </div>
+            )}
+            
+            <div className="max-w-4xl mx-auto space-y-6">
+              {messages.map((msg) => (
+                <ChatMessage 
+                  key={msg.id} 
+                  message={msg} 
+                  onAction={handleWorkflowAction}
+                />
+              ))}
+              
+              {(isLoading || n8nLoading) && (
+                <div className="flex justify-start">
+                  <div className="bg-muted rounded-lg px-4 py-3 max-w-xs">
+                    <div className="flex items-center space-x-2">
                       <div className="flex space-x-1">
                         <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"></div>
                         <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                         <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                       </div>
+                      <span className="text-xs text-muted-foreground">Creating workflow...</span>
                     </div>
                   </div>
-                )}
-              </div>
-              <ChatInput onSend={handleSendMessage} value={currentMessage} onChange={setCurrentMessage} />
-            </TabsContent>
-            
-            <TabsContent value="visual" className="flex-1 m-0">
-              <VisualWorkflowBuilder workflowId={selectedWorkflowId} />
-            </TabsContent>
-          </Tabs>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Chat Input */}
+          <ChatInput onSend={handleSendMessage} value={currentMessage} onChange={setCurrentMessage} />
         </div>
       </main>
     </div>

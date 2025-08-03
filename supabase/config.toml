@@ -13,6 +13,9 @@ verify_jwt = true
 [functions.nl-to-workflow]
 verify_jwt = true
 
+[functions.nl-to-n8n]
+verify_jwt = true
+
 [functions.integration-manager]
 verify_jwt = true
 
