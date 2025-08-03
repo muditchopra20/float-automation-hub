@@ -54,53 +54,52 @@ const Builder = () => {
     return workflowKeywords.test(message) && message.length > 10; // Avoid short casual messages
   };
 
-  const analyzeWorkflowRequirements = (message: string) => {
-    const requirements = {
-      needsCredentials: /\b(api|key|token|auth|login|password)\b/i.test(message),
-      needsTrigger: /\b(when|if|trigger|start|begin|schedule)\b/i.test(message),
-      needsActions: /\b(send|create|update|delete|post|get|call)\b/i.test(message),
-      needsConditions: /\b(if|when|condition|check|validate)\b/i.test(message),
-      hasEmail: /\b(email|mail|@)\b/i.test(message),
-      hasWebhook: /\b(webhook|http|api|endpoint)\b/i.test(message),
-      hasSchedule: /\b(daily|weekly|monthly|hourly|schedule|cron)\b/i.test(message)
-    };
-
-    const missing = [];
-    if (requirements.needsCredentials && !workflowContext.credentials) {
-      missing.push('API credentials or authentication details');
-    }
-    if (requirements.needsTrigger && !workflowContext.trigger) {
-      missing.push('trigger conditions (when should this run?)');
-    }
-    if (requirements.needsActions && !workflowContext.actions) {
-      missing.push('specific actions to perform');
-    }
-    if (requirements.hasEmail && !workflowContext.emailConfig) {
-      missing.push('email configuration (from/to addresses)');
-    }
-    if (requirements.hasWebhook && !workflowContext.webhookConfig) {
-      missing.push('webhook endpoint details');
-    }
-
-    return { requirements, missing };
+  const extractToolsFromMessage = (message: string) => {
+    const tools = [];
+    const lowerMessage = message.toLowerCase();
+    
+    // Common integrations
+    if (lowerMessage.includes('typeform')) tools.push('Typeform');
+    if (lowerMessage.includes('notion')) tools.push('Notion');
+    if (lowerMessage.includes('slack')) tools.push('Slack');
+    if (lowerMessage.includes('gmail') || lowerMessage.includes('email')) tools.push('Gmail');
+    if (lowerMessage.includes('google sheets') || lowerMessage.includes('spreadsheet')) tools.push('Google Sheets');
+    if (lowerMessage.includes('webhook') || lowerMessage.includes('api')) tools.push('Webhook');
+    if (lowerMessage.includes('discord')) tools.push('Discord');
+    if (lowerMessage.includes('trello')) tools.push('Trello');
+    if (lowerMessage.includes('calendly')) tools.push('Calendly');
+    if (lowerMessage.includes('hubspot')) tools.push('HubSpot');
+    if (lowerMessage.includes('salesforce')) tools.push('Salesforce');
+    
+    return tools;
   };
+
+  const [conversationState, setConversationState] = useState<{
+    phase: 'greeting' | 'understanding' | 'tools_check' | 'building' | 'preview' | 'complete';
+    tools: string[];
+    toolsConfirmed: boolean;
+  }>({
+    phase: 'greeting',
+    tools: [],
+    toolsConfirmed: false
+  });
 
   const getConversationalResponse = (message: string) => {
     const lowerMessage = message.toLowerCase().trim();
     
     if (lowerMessage === 'hi' || lowerMessage === 'hello' || lowerMessage === 'hey') {
-      return "Hi there! 👋 I'm here to help you automate repetitive tasks and create powerful workflows. What kind of work are you trying to make easier or more efficient?";
+      return "Hey! I'm Flo 👋 — your AI workflow assistant. Just tell me what you want to automate, and I'll build it for you inside your connected tools.";
     }
     
     if (lowerMessage.includes('help') || lowerMessage.includes('what can you do')) {
-      return "I can help you create automated workflows to save time and reduce manual work! Here are some things I can automate for you:\n\n• Email notifications when events happen\n• Data sync between different apps\n• Scheduled tasks and reminders\n• Form submissions and responses\n• Social media posting\n• File processing and organization\n\nWhat specific task would you like to automate?";
+      return "I help you automate tasks by creating workflows using tools like Typeform, Notion, Slack, Gmail, and more. I operate on top of n8n and can build any automation you describe.\n\nJust tell me what you want to automate — like 'When someone submits a Typeform, add their data to Notion and alert my team on Slack' — and I'll build it for you!";
     }
     
     if (lowerMessage.includes('how') && lowerMessage.includes('work')) {
-      return "I work by having a conversation with you about what you want to automate. Just describe your workflow in plain English, like:\n\n• \"Send me an email when someone fills out my contact form\"\n• \"Post to Slack when a new order comes in\"\n• \"Update my spreadsheet when I get new leads\"\n\nI'll ask follow-up questions to understand exactly what you need, then create the automation for you. What would you like to automate?";
+      return "I understand what you want to automate, check if your tools are connected, then build and send the workflow to your n8n workspace. Just describe your automation in plain English and I'll take care of the rest!";
     }
 
-    return "I'm here to help you automate tasks and create workflows! What specific process or task would you like to make easier? Just describe it in your own words.";
+    return "I'm Flo, your workflow assistant! Just tell me what you want to automate and I'll build it for you. What task would you like to make automatic?";
   };
 
   const handleSendMessage = async (message: string) => {
@@ -115,7 +114,7 @@ const Builder = () => {
     setIsLoading(true);
 
     try {
-      // Handle casual greetings and help requests conversationally
+      // 1. Greeting & Onboarding
       if (isGreetingOrCasual(message)) {
         const assistantMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
@@ -129,84 +128,164 @@ const Builder = () => {
         return;
       }
 
-      // Only proceed with workflow creation if it's actually a workflow request
-      if (!isWorkflowRequest(message)) {
-        const assistantMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: "I'd love to help you create an automation! Could you describe what specific task or process you'd like to automate? For example, you might want to send notifications, sync data between apps, or schedule regular tasks.",
-          timestamp: new Date(),
-        };
+      // 2. Intent Understanding
+      if (isWorkflowRequest(message)) {
+        const tools = extractToolsFromMessage(message);
+        
+        if (tools.length > 0) {
+          // Update conversation state
+          setConversationState(prev => ({
+            ...prev,
+            phase: 'tools_check',
+            tools: tools
+          }));
 
-        setMessages(prev => [...prev, assistantMessage]);
-        setIsLoading(false);
-        return;
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: `Got it! You want to use ${tools.join(', ')} in this flow. Let's quickly check if you've connected those.\n\nAre these ${tools.length} tools connected to your account? ${tools.join(', ')}?`,
+            timestamp: new Date(),
+          };
+
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
       }
 
-      // Update workflow context with user input
+      // 3. Tool Integration Check (Handle yes/no responses)
+      if (conversationState.phase === 'tools_check') {
+        const lowerMessage = message.toLowerCase();
+        
+        if (lowerMessage.includes('yes') || lowerMessage.includes('connected') || lowerMessage.includes('ready')) {
+          setConversationState(prev => ({ ...prev, toolsConfirmed: true, phase: 'building' }));
+          
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: `Awesome. I'll now create a workflow that uses ${conversationState.tools.join(', ')}.`,
+            timestamp: new Date(),
+          };
+
+          setMessages(prev => [...prev, assistantMessage]);
+          
+          // 4. Workflow Generation Phase - Convert to n8n workflow
+          setTimeout(async () => {
+            try {
+              const result = await convertMessageToN8nWorkflow(workflowContext.lastMessage || message, {
+                tools: conversationState.tools,
+                workflowContext
+              });
+
+              // 5. Preview
+              const previewMessage: ChatMessage = {
+                id: (Date.now() + 2).toString(),
+                role: 'assistant',
+                content: `Here's a quick summary of the workflow I'm creating:\n\n• Trigger: ${result.summary.split('\n')[0] || 'Automated trigger'}\n• Actions: ${result.summary.split('\n').slice(1).join('\n') || 'Process and respond'}\n\nReady to push this to your n8n workspace?`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    type: 'provide_info',
+                    label: 'Yes, Create It!'
+                  }
+                ]
+              };
+
+              setMessages(prev => [...prev, previewMessage]);
+              
+              // Auto-proceed after 2 seconds or wait for user confirmation
+              setTimeout(async () => {
+                // 6. Push to n8n
+                const finalMessage: ChatMessage = {
+                  id: (Date.now() + 3).toString(),
+                  role: 'assistant',
+                  content: `✅ Done! The workflow has been created in your n8n dashboard. You can edit or test it from there.\n\n**${result.workflow.name}**\n\n${result.message}`,
+                  timestamp: new Date(),
+                  workflowId: result.workflow.id,
+                  actions: [
+                    {
+                      type: 'activate',
+                      label: 'Activate Workflow',
+                      workflowId: result.workflow.id
+                    },
+                    {
+                      type: 'execute',
+                      label: 'Test Run',
+                      workflowId: result.workflow.id
+                    }
+                  ]
+                };
+
+                setMessages(prev => [...prev, finalMessage]);
+                
+                // Reset conversation state
+                setConversationState({
+                  phase: 'complete',
+                  tools: [],
+                  toolsConfirmed: false
+                });
+                setWorkflowContext({});
+                
+                // Refresh workflows list
+                const updatedWorkflows = await getWorkflows();
+                setWorkflows(updatedWorkflows);
+              }, 2000);
+              
+            } catch (error) {
+              console.error('Workflow creation error:', error);
+              throw error;
+            }
+          }, 1000);
+          
+          setIsLoading(false);
+          return;
+        }
+        
+        if (lowerMessage.includes('no') || lowerMessage.includes('not connected')) {
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: "No worries — please connect those in your integrations tab and then come back here!",
+            timestamp: new Date(),
+          };
+
+          setMessages(prev => [...prev, assistantMessage]);
+          
+          // Reset conversation state
+          setConversationState({
+            phase: 'greeting',
+            tools: [],
+            toolsConfirmed: false
+          });
+          
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Store user message for workflow creation
       setWorkflowContext(prev => ({ ...prev, lastMessage: message }));
 
-      // Analyze what information is still needed
-      const { requirements, missing } = analyzeWorkflowRequirements(message);
+      // Default response for non-workflow requests
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I'd love to help you create an automation! Could you describe what specific task or process you'd like to automate? For example, you might want to automate form submissions, send notifications, or sync data between apps.",
+        timestamp: new Date(),
+      };
 
-      if (missing.length > 0) {
-        const assistantMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `I understand you want to automate this process. To create the perfect workflow, I need a bit more information about:\n\n${missing.map(item => `• ${item}`).join('\n')}\n\nCould you provide these details? For example:\n- What specific trigger should start this workflow?\n- What exact actions should be performed?\n- Do you need any API keys or credentials?`,
-          timestamp: new Date(),
-          requiresInfo: {
-            type: missing.includes('trigger') ? 'trigger' : missing.includes('actions') ? 'actions' : 'credentials',
-            fields: missing
-          }
-        };
-
-        setMessages(prev => [...prev, assistantMessage]);
-      } else {
-        // Convert natural language to n8n workflow when we have enough info
-        const result = await convertMessageToN8nWorkflow(message, {
-          agentMentions: message.match(/@[\w_]+/g) || [],
-          workflowContext
-        });
-
-        const assistantMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `✅ **Workflow Created Successfully!**\n\n**${result.workflow.name}**\n\n${result.summary}\n\nYour workflow has been created in n8n and is ready to use. You can activate it to start automating or test it first.`,
-          timestamp: new Date(),
-          workflowId: result.workflow.id,
-          actions: [
-            {
-              type: 'activate',
-              label: 'Activate Workflow',
-              workflowId: result.workflow.id
-            },
-            {
-              type: 'execute',
-              label: 'Test Run',
-              workflowId: result.workflow.id
-            }
-          ]
-        };
-
-        setMessages(prev => [...prev, assistantMessage]);
-        setWorkflowContext({}); // Reset context after successful creation
-        
-        // Refresh workflows list
-        const updatedWorkflows = await getWorkflows();
-        setWorkflows(updatedWorkflows);
-      }
+      setMessages(prev => [...prev, assistantMessage]);
+      
     } catch (error) {
       console.error('Workflow conversion error:', error);
       
-      let errorContent = "Sorry, I couldn't create a workflow from that request.";
+      // 7. Error Handling
+      let errorContent = "Hmm, something went wrong while creating your workflow. Can you check if your integrations are active? Or try again in a bit.";
       
       if (error.message.includes('N8N_API_KEY') || error.message.includes('N8N_INSTANCE_URL')) {
-        errorContent = "I need your n8n configuration to create workflows. Please add your n8n API key and instance URL.";
+        errorContent = "I need your n8n configuration to create workflows. Please add your n8n API key and instance URL in your integrations.";
       } else if (error.message.includes('OpenAI API key')) {
-        errorContent = "I need your OpenAI API key to create workflows. Please add it to your credentials first.";
-      } else {
-        errorContent = `Sorry, I couldn't create a workflow from that request. Error: ${error.message}`;
+        errorContent = "I need your OpenAI API key to understand and create workflows. Please add it to your credentials first.";
       }
       
       const errorMessage: ChatMessage = {
@@ -321,18 +400,18 @@ const Builder = () => {
                     <MessageSquare className="w-10 h-10 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold mb-2">Welcome to Flo AI</h3>
+                    <h3 className="text-xl font-semibold mb-2">Hey! I'm Flo 👋</h3>
                     <p className="text-muted-foreground mb-6">
-                      Your smart workflow assistant powered by n8n. Just describe what you want to automate!
+                      Your AI workflow assistant. Just tell me what you want to automate, and I'll build it for you inside your connected tools.
                     </p>
                   </div>
                   <div className="text-left space-y-3 bg-muted/50 rounded-lg p-6">
                     <p className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Try examples like:</p>
                     <div className="space-y-2">
-                      <p className="text-sm">💧 "Send me an email when someone fills out my contact form"</p>
-                      <p className="text-sm">💬 "Create a Slack notification when a new user signs up"</p>
-                      <p className="text-sm">📊 "Update a spreadsheet every time I get a new order"</p>
-                      <p className="text-sm">🔄 "Sync new leads from my website to my CRM"</p>
+                      <p className="text-sm">"When someone submits a Typeform, add their data to Notion and alert my team on Slack"</p>
+                      <p className="text-sm">"Send me a Gmail notification when I get a new lead in HubSpot"</p>
+                      <p className="text-sm">"Create a Google Sheets row every time someone books a Calendly meeting"</p>
+                      <p className="text-sm">"Post to Discord when there's a new order in my e-commerce store"</p>
                     </div>
                   </div>
                 </div>
