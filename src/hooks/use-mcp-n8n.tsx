@@ -201,19 +201,16 @@ export const useMCPN8n = () => {
     setLoading(true);
     try {
       // Call the nl-to-n8n edge function to convert message to workflow
-      const response = await fetch('/api/nl-to-n8n', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message, context }),
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('nl-to-n8n', {
+        body: { message, context }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to convert message to workflow');
+      if (error) {
+        throw new Error(error.message || 'Failed to convert message to workflow');
       }
 
-      const workflowData = await response.json();
+      const workflowData = data;
       
       // Create the workflow using MCP
       const workflow = await createWorkflow({
